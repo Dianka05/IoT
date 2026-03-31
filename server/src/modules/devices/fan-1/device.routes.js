@@ -6,7 +6,7 @@ const express = require('express')
 const { publishFanSet } = require('./device.service')
 const client = require('../../../mqtt/client')
 const router = express.Router()
-console.log(typeof Errors.ServiceUnavailable)
+
 router.post('/fan', (req, res, next) => {
   try {
     const { enabled, sessionId, deviceId } = req.body
@@ -19,7 +19,7 @@ router.post('/fan', (req, res, next) => {
     }
 
     if (!client.connected) {
-      // return next(Errors.ServiceUnavailable('MQTT broker is not connected'))
+      return next(Errors.ServiceUnavailable('MQTT broker is not connected'))
     }
 
     publishFanSet(deviceId, enabled, sessionId)

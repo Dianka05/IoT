@@ -1,4 +1,5 @@
 const sessionsService = require('../modules/sessions/sessions.service')
+const { logMqttHandlerError } = require('../modules/logs/logs.service')
 
 function parseTopic(topic) {
   const parts = topic.split('/')
@@ -9,7 +10,7 @@ function parseTopic(topic) {
   return { entityType, entityId, channelType, name }
 }
 
-function handleMqttMessage(topic, messageBuffer) {
+async function handleMqttMessage(topic, messageBuffer) {
   try {
     const msg = JSON.parse(messageBuffer.toString())
     const parsed = parseTopic(topic)
@@ -31,7 +32,7 @@ function handleMqttMessage(topic, messageBuffer) {
     }
 
     if (entityType === 'box' && channelType === 'event' && name === 'auth_request') {
-      return sessionsService.handleAuthRequest({
+      return await sessionsService.handleAuthRequest({
         ...msg,
         payload: {
           ...msg.payload,
@@ -41,18 +42,19 @@ function handleMqttMessage(topic, messageBuffer) {
     }
 
     if (entityType === 'box' && channelType === 'event' && name === 'session_started') {
-      return sessionsService.handleSessionStarted(msg)
+      return await sessionsService.handleSessionStarted(msg)
     }
 
     if (entityType === 'box' && channelType === 'event' && name === 'session_ended') {
-      return sessionsService.handleSessionEnded(msg)
+      return await sessionsService.handleSessionEnded(msg)
     }
 
     if (entityType === 'box' && channelType === 'state' && name === 'sessions') {
-      return sessionsService.handleSessionsState(msg)
+      return await sessionsService.handleSessionsState(msg)
     }
   } catch (err) {
-    // log
+    console.error('MQTT handler error:', err)
+    await logMqttHandlerError(topic, messageBuffer, err)
   }
 }
 
