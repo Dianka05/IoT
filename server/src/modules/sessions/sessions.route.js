@@ -4,9 +4,9 @@ const { Errors } = require('ds-express-errors')
 const {
   getSessions,
   getSessionById,
-  createTestSession,
   startSessionById,
   endSessionById,
+  createPendingSession,
 } = require('./sessions.service')
 
 const router = express.Router()
@@ -42,33 +42,38 @@ router.get('/sessions/:sessionId', async (req, res, next) => {
   }
 })
 
-router.post('/sessions/test-create', async (req, res, next) => {
+router.post('/sessions', async (req, res, next) => {
   try {
     const {
       boxId,
       uid,
-      userId,
-      userName,
-      role,
       deviceIds,
       sessionDurationSec,
       mode,
     } = req.body || {}
 
-    if (deviceIds && !Array.isArray(deviceIds)) {
-      return next(Errors.BadRequest('`deviceIds` must be an array'))
+
+    if (!boxId || typeof boxId !== 'string') {
+      return next(Errors.BadRequest('`boxId` must be a non-empty string'))
     }
 
-    const session = await createTestSession({
+    if (!uid || typeof uid !== 'string') {
+      return next(Errors.BadRequest('`uid` must be a non-empty string'))
+    }
+
+    if (!Array.isArray(deviceIds) || deviceIds.length === 0) {
+      return next(Errors.BadRequest('`deviceIds` must be a non-empty array'))
+    }
+
+
+    const session = await createPendingSession({
       boxId,
       uid,
-      userId,
-      userName,
-      role,
       deviceIds,
       sessionDurationSec,
       mode,
     })
+
 
     res.json({
       success: true,
