@@ -66,6 +66,22 @@ async function markSessionStarted(sessionId) {
   return getSession(sessionId)
 }
 
+async function findPendingSessionForAuth(uid, boxId) {
+  const snapshot = await db
+    .collection('sessions')
+    .where('uid', '==', uid)
+    .where('boxId', '==', boxId)
+    .where('status', '==', 'pending')
+    .orderBy('createdAt', 'desc')
+    .limit(1)
+    .get()
+
+  if (snapshot.empty) return null
+
+  return mapDoc(snapshot.docs[0])
+}
+
+
 async function endSession(sessionId) {
   const current = await getSession(sessionId)
   if (!current) return null
@@ -102,4 +118,5 @@ module.exports = {
   markSessionStarted,
   endSession,
   isDeviceBusy,
+  findPendingSessionForAuth
 }

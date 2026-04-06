@@ -1,5 +1,4 @@
 const sessionsService = require('../modules/sessions/sessions.service')
-const { logMqttHandlerError } = require('../modules/logs/logs.service')
 
 function parseTopic(topic) {
   const parts = topic.split('/')
@@ -54,8 +53,19 @@ async function handleMqttMessage(topic, messageBuffer) {
     }
   } catch (err) {
     console.error('MQTT handler error:', err)
-    await logMqttHandlerError(topic, messageBuffer, err)
   }
+}
+
+function handleFanState(deviceId, msg) {
+  console.log(`Fan state updated [${deviceId}]:`, msg.payload)
+}
+
+function handleDeviceStatus(deviceId, msg) {
+  console.log(`Device status updated [${deviceId}]:`, msg.payload)
+}
+
+function handleBoxStatus(boxId, msg) {
+  console.log(`Box status updated [${boxId}]:`, msg.payload)
 }
 
 module.exports = {

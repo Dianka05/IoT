@@ -1,18 +1,29 @@
 const { v4: uuidv4 } = require('uuid')
 
 const store = require('./sessions.store.firestore')
-const deviceProvider = require('../../providers/device.provider')
-const { publishEndSession, publishAuthResult } = require('../boxes/main-box/boxes.service')
+const {
+  publishEndSession,
+  publishAuthResult,
+} = require('../boxes/main-box/boxes.service')
+
+
+const {
+  logAuthRequestReceived,
+  logAuthDenied,
+  logAuthGranted,
+  logSessionStarted,
+  logSessionEnded,
+} = require('../logs/logs.service')
+
 const { findActiveUserByUid } = require('../users/users.service')
 
 async function handleAuthRequest(msg) {
   const { uid, boxId } = msg.payload
 
-  console.log('Auth request received: ' + JSON.stringify(msg.payload))
-
   const user = await findActiveUserByUid(uid)
-
   if (!user) {
+    await logAuthDenied({ uid, boxId }, 'UID not recognized or user inactive')
+
     return publishAuthResult(boxId, {
       uid,
       allowed: false,
@@ -20,37 +31,20 @@ async function handleAuthRequest(msg) {
     })
   }
 
-  const targetDeviceIds =
-    Array.isArray(user.allowedDeviceIds) && user.allowedDeviceIds.length > 0
-      ? user.allowedDeviceIds
-      : ['fan-1']
+  const session = await store.findPendingSessionForAuth(uid, boxId)
+  if (!session) {
+    await logAuthDenied({ uid, boxId }, 'no_pending_session')
 
-  for (const deviceId of targetDeviceIds) {
-    if (await store.isDeviceBusy(deviceId)) {
-      return publishAuthResult(boxId, {
-        uid,
-        allowed: false,
-        reason: 'device_busy',
-      })
-    }
+    return publishAuthResult(boxId, {
+      uid,
+      allowed: false,
+      reason: 'no pending session',
+    })
   }
 
-  const session = {
-    sessionId: uuidv4(),
-    boxId,
-    uid,
-    userId: user.userId,
-    userName: user.name,
-    role: user.role,
-    deviceIds: targetDeviceIds,
-    sessionDurationSec: user.sessionDurationSec || 3600,
-    mode: 'normal',
-    status: 'pending',
-  }
+  await logAuthGranted(session)
 
-  await store.createSession(session)
-
-  publishAuthResult(boxId, {
+  return publishAuthResult(boxId, {
     uid: session.uid,
     allowed: true,
     userId: session.userId,
@@ -62,10 +56,6 @@ async function handleAuthRequest(msg) {
     mode: session.mode,
     reason: null,
   })
-
-  for (const deviceId of session.deviceIds) {
-    await deviceProvider.publishFanSet(deviceId, true, session.sessionId)
-  }
 }
 
 async function handleSessionStarted(msg) {
@@ -74,7 +64,15 @@ async function handleSessionStarted(msg) {
   const { sessionId } = msg.payload
   if (!sessionId) return null
 
-  return store.markSessionStarted(sessionId)
+ const session = await store.markSessionStarted(sessionId)
+  if (session) {
+    await logSessionStarted({
+      boxId: session.boxId,
+      sessionId: session.sessionId,
+    })
+  }
+  return session
+
 }
 
 async function handleSessionEnded(msg) {
@@ -83,7 +81,10 @@ async function handleSessionEnded(msg) {
   const { sessionId } = msg.payload
   if (!sessionId) return null
 
-  return store.endSession(sessionId)
+  const session = await store.endSession(sessionId)
+  await logSessionEnded(msg.payload, session)
+  return session
+
 }
 
 function handleSessionsState(msg) {
@@ -106,20 +107,40 @@ async function getSessionById(sessionId) {
   return store.getSession(sessionId)
 }
 
-async function createTestSession(data = {}) {
+async function createPendingSession(data = {}) {
+  if (!data.boxId) throw new Error('boxId is required')
+  if (!data.uid) throw new Error('uid is required')
+  
+
+
+  if (!Array.isArray(data.deviceIds) || data.deviceIds.length === 0) {
+    throw new Error('deviceIds is required')
+  }
+
+  const user = await findActiveUserByUid(data.uid)
+  if (!user) {
+    throw new Error('Active user not found for uid')
+  }
+
+
   const session = {
     sessionId: uuidv4(),
-    boxId: data.boxId || 'main-1',
-    uid: data.uid || 'TEST_UID_001',
-    userId: data.userId || 'test-user-1',
-    userName: data.userName || 'Test User',
-    role: data.role || 'user',
-    deviceIds: Array.isArray(data.deviceIds) && data.deviceIds.length > 0
-      ? data.deviceIds
-      : ['fan-1'],
-    sessionDurationSec: data.sessionDurationSec || 1800,
+    boxId: data.boxId,
+    uid: data.uid,
+    userId: user.userId,
+    userName: user.name,
+    role: user.role || 'user',
+    deviceIds: data.deviceIds,
+    sessionDurationSec: data.sessionDurationSec || user.sessionDurationSec || 1800,
     mode: data.mode || 'manual',
     status: 'pending',
+  }
+
+
+  for (const deviceId of session.deviceIds) {
+    if (await store.isDeviceBusy(deviceId)) {
+      throw new Error(`Device is busy: ${deviceId}`)
+    }
   }
 
   return store.createSession(session)
@@ -141,7 +162,7 @@ module.exports = {
   forceEndSession,
   getSessions,
   getSessionById,
-  createTestSession,
   startSessionById,
   endSessionById,
+  createPendingSession,
 }
