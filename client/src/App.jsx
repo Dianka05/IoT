@@ -1,10 +1,23 @@
-function App() {
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Dashboard from './pages/dashboard';
 
+const Maintenance = () => <div className="p-8">Maintenance Page (In Progress)</div>;
+const Logs = () => <div className="p-8">Logs Page (In Progress)</div>;
+const Settings = () => <div className="p-8">Settings Page (In Progress)</div>;
+
+function App() {
   return (
-    <>
-      <h1 className='text-3xl font-bold'>Welcome to the App</h1>
-    </>
-  )
+    <Router>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/maintenance" element={<Maintenance />} />
+        <Route path="/logs" element={<Logs />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<div className="p-10">404: Not Found</div>} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;
