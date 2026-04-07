@@ -1,34 +1,29 @@
 import React, { useState, useEffect } from 'react';
 
 const SessionCard = ({ id, technician }) => {
-  // 1. Устанавливаем начальное время в секундах (4:25:00 = 15900 секунд)
   const [secondsLeft, setSecondsLeft] = useState(15900);
 
-  // 2. Логика таймера
   useEffect(() => {
-    // Создаем интервал, который срабатывает каждую секунду
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 0) {
-          clearInterval(timer); // Останавливаем, если время вышло
+          clearInterval(timer); 
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-    // Важно: очищаем интервал, если компонент удаляется с экрана
     return () => clearInterval(timer);
   }, []);
 
-  // 3. Функция для форматирования секунд в вид HH:MM:SS
   const formatTime = (totalSeconds) => {
     const hrs = Math.floor(totalSeconds / 3600);
     const mins = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
 
     return [hrs, mins, secs]
-      .map((v) => (v < 10 ? '0' + v : v)) // Добавляем ноль впереди, если число < 10
+      .map((v) => (v < 10 ? '0' + v : v)) 
       .join(':');
   };
 

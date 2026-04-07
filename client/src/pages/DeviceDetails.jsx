@@ -1,6 +1,6 @@
 import Sidebar from '../components/sidebar';
 import DeviceHeader from '../components/DeviceDetails/DeviceHeader';
-import { SessionInfo, TimerCard } from '../components/DeviceDetails/SessionInfo'; // Импорт обоих из одного файла
+import { SessionInfo, TimerCard } from '../components/DeviceDetails/SessionInfo'; 
 import StatusFooter from '../components/DeviceDetails/StatusFooter';
 import { LayoutDashboard } from 'lucide-react';
 
