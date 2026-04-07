@@ -1,8 +1,8 @@
 import Sidebar from '../components/sidebar';
-import StatusBadge from '../components/StatusBadge';
-import SessionCard from '../components/SessionCard';
-import LockControl from '../components/LockControl';
-import ActivityLog from '../components/ActivityLog';
+import StatusBadge from '../components/dashboard/StatusBadge';
+import SessionCard from '../components/dashboard/SessionCard';
+import LockControl from '../components/dashboard/LockControl';
+import ActivityLog from '../components/dashboard/ActivityLog';
 
 const Dashboard = () => {
   return (
