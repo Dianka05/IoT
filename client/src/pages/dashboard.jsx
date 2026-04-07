@@ -1,7 +1,6 @@
 import Sidebar from '../components/sidebar';
 import StatusBadge from '../components/dashboard/StatusBadge';
 import SessionCard from '../components/dashboard/SessionCard';
-import LockControl from '../components/dashboard/LockControl';
 import ActivityLog from '../components/dashboard/ActivityLog';
 
 const Dashboard = () => {
@@ -23,8 +22,6 @@ const Dashboard = () => {
             technician="Technician • Company/Sector" 
             timeLeft="04:25:00" 
           />
-          
-          <LockControl status="LOCKED" />
           
           <ActivityLog />
         </div>

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/dashboard';
+import AdminDashboard from './pages/adminDashboard';
 
 const Maintenance = () => <div className="p-8">Maintenance Page (In Progress)</div>;
 const Logs = () => <div className="p-8">Logs Page (In Progress)</div>;
@@ -10,6 +11,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/logs" element={<Logs />} />
