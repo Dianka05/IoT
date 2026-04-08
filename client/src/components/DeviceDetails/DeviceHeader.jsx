@@ -19,11 +19,11 @@ const DeviceHeader = ({ name, id, firmware }) => (
     </div>
 
     <div className="flex gap-3">
-      <div className="bg-green-50 border border-green-100 px-6 py-3 rounded-xl text-center">
+      <div className="bg-green-50 shrink-0 border border-green-100 px-6 py-3 rounded-xl text-center">
         <p className="text-[8px] font-black text-green-600/50 uppercase tracking-widest mb-1">Device Status</p>
         <p className="text-sm font-black text-green-600 uppercase">Online</p>
       </div>
-      <div className="bg-green-50 border border-green-100 px-6 py-3 rounded-xl text-center">
+      <div className="bg-green-50 shrink-0 border border-green-100 px-6 py-3 rounded-xl text-center">
         <p className="text-[8px] font-black text-green-600/50 uppercase tracking-widest mb-1">Active Session</p>
         <p className="text-sm font-black text-green-600 uppercase">Connected</p>
       </div>
