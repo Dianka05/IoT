@@ -12,7 +12,6 @@ import {
 const Sidebar = ({ isOpen, setIsOpen }) => {
   return (
     <>
-      {/* DESKTOP SIDEBAR */}
       <aside className="
         hidden md:flex
         w-72 bg-white border-r border-slate-100 flex-col min-h-screen
@@ -20,7 +19,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         <SidebarContent />
       </aside>
 
-      {/* MOBILE OVERLAY */}
       <div
         className={`
           fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden
@@ -30,7 +28,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         onClick={() => setIsOpen(false)}
       />
 
-      {/* MOBILE SIDEBAR */}
       <aside
         className={`
           fixed top-0 left-0 h-full w-72 bg-white border-r border-slate-100 flex-col z-50 p-0
@@ -47,7 +44,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 const SidebarContent = () => {
   return (
     <>
-      {/* HEADER */}
       <div className="p-8 mb-4">
         <div className="flex items-center gap-3">
           <div className="bg-orange-500 p-2.5 rounded-xl shadow-lg shadow-orange-200">
@@ -69,7 +65,6 @@ const SidebarContent = () => {
         </div>
       </div>
 
-      {/* NAVIGATION */}
       <nav className="flex-1 px-4 space-y-2">
         <NavButton to="/admin-dashboard" icon={<LayoutDashboard size={22} />} label="Dashboard" />
         <NavButton to="/equipment" icon={<Monitor size={22} />} label="Equipment" />
@@ -80,7 +75,6 @@ const SidebarContent = () => {
         <NavButton to="/configuration" icon={<Settings size={22} />} label="Configuration" />
       </nav>
 
-      {/* SYSTEM STATUS */}
       <div className="p-4 mt-auto">
         <div className="bg-green-100 text-green-700 p-2 rounded-lg text-center text-xs font-medium">
           System Status: Active

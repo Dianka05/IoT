@@ -4,10 +4,8 @@ export default function UsersListHeader({ setSidebarOpen }) {
   return (
     <div className="w-full flex items-center justify-between mb-8">
 
-      {/* LEFT SIDE */}
       <div className="flex items-center gap-4">
 
-        {/* HAMBURGER — ONLY MOBILE */}
         <button
           className="
             md:hidden p-2 rounded-xl transition-all duration-200
@@ -27,10 +25,8 @@ export default function UsersListHeader({ setSidebarOpen }) {
         </h1>
       </div>
 
-      {/* RIGHT SIDE */}
       <div className="flex items-center gap-4">
 
-        {/* BELL */}
         <button
           className="
             p-2 rounded-xl transition-all duration-200
@@ -46,7 +42,6 @@ export default function UsersListHeader({ setSidebarOpen }) {
           />
         </button>
 
-        {/* ADD NEW USER */}
         <button
           className="
             flex items-center gap-2
