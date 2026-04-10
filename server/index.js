@@ -11,17 +11,23 @@ const logsRoutes = require('./src/modules/logs/logs.routes')
 
 const client = require('./src/mqtt/client')
 const { initMqtt } = require('./src/mqtt/init')
-const { db } = require('./src/integrations/firebase/firebase.client')
-const { writeLog, getRecentLogs } = require('./src/modules/logs/logs.store.firestore')
-const {
-  logAuthRequestReceived,
-  logAuthDenied,
-  logAuthGranted,
-  logSessionStarted,
-  logSessionEnded,
-} = require('./src/modules/logs/logs.service')
+// const { db } = require('./src/integrations/firebase/firebase.client')
+// const { writeLog, getRecentLogs } = require('./src/modules/logs/logs.store.firestore')
+// const {
+//   logAuthRequestReceived,
+//   logAuthDenied,
+//   logAuthGranted,
+//   logSessionStarted,
+//   logSessionEnded,
+// } = require('./src/modules/logs/logs.service')
 
-initMqtt()
+
+try {
+  initMqtt()
+} catch (error) {
+  logDebug('Error occurred while initializing MQTT: ' + error.message)
+    console.log("ss")
+}
 
 const app = express()
 app.use(express.json())
