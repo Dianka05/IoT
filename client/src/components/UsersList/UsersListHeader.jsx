@@ -2,7 +2,7 @@ import { Bell, UserPlus, Menu } from "lucide-react";
 
 export default function UsersListHeader({ setSidebarOpen }) {
   return (
-    <div className="w-full flex items-center justify-between mb-8">
+  <div className="w-full flex flex-wrap items-center justify-between gap-4 mb-8">
 
       <div className="flex items-center gap-4">
 
@@ -20,7 +20,8 @@ export default function UsersListHeader({ setSidebarOpen }) {
         </button>
 
 
-        <h1 className="text-4xl font-[900] text-[#1e293b] tracking-tight uppercase">
+        <h1 className="text-2xl md:text-4xl font-[900] text-[#1e293b] tracking-tight uppercase">
+
           System Users
         </h1>
       </div>

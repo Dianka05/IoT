@@ -10,7 +10,7 @@ const UserStatsCards = () => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       {stats.map((s, i) => (
         <StatCard key={i} {...s} />
       ))}
