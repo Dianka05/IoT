@@ -7,7 +7,8 @@ import LogsTable, { logsData } from "../components/Logs/LogsTable";
 import Pagination from "../components/Logs/Pagination";
 import FooterStats from "../components/Logs/FooterStats";
 
-const Logs = ({ setSidebarOpen }) => {
+export default function Logs() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [filteredData, setFilteredData] = useState(logsData);
   const [page, setPage] = useState(1);
@@ -28,11 +29,11 @@ const Logs = ({ setSidebarOpen }) => {
     });
 
     setFilteredData(result);
-    setPage(1); 
+    setPage(1);
   };
 
   const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
     setFilteredData(logsData);
     setPage(1);
   };
@@ -42,10 +43,12 @@ const Logs = ({ setSidebarOpen }) => {
   const pageData = filteredData.slice(start, end);
 
   return (
-    <div className="flex">
-      <Sidebar />
+    <div className="h-screen flex bg-[#f8fafc] overflow-hidden">
 
-      <main className="flex-1 p-8">
+      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+
         <Header setSidebarOpen={setSidebarOpen} onRefresh={handleRefresh} />
 
         <div key={refreshKey}>
@@ -68,8 +71,8 @@ const Logs = ({ setSidebarOpen }) => {
             hours: 8760,
           }}
         />
+
       </main>
     </div>
   );
-};
-export default Logs;
+}

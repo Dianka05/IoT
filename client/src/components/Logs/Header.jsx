@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Menu } from "lucide-react";
 
 export default function Header({ setSidebarOpen, onRefresh }) {
   const [isPressed, setIsPressed] = useState(false);
@@ -7,19 +7,34 @@ export default function Header({ setSidebarOpen, onRefresh }) {
   const handleRefresh = () => {
     setIsPressed(true);
     onRefresh?.();
-
     setTimeout(() => setIsPressed(false), 250);
   };
 
   return (
-    <header className="flex items-center justify-between mb-8">
-      <div>
-        <h1 className="text-4xl font-[900] text-[#1e293b] tracking-tight uppercase">
-          System Security Logs
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Real-time monitoring of IoT equipment activities and access attempts.
-        </p>
+    <header className="flex items-center justify-between mb-8 w-full overflow-x-hidden">
+
+      <div className="flex items-center gap-4">
+
+        <button
+          className="
+            md:hidden p-2 rounded-xl transition-all duration-200
+            hover:bg-slate-100 hover:scale-110 hover:rotate-6
+            active:rotate-0
+          "
+          onClick={() => setSidebarOpen(true)}
+        >
+          <Menu size={24} className="text-slate-700" />
+        </button>
+
+        <div>
+          <h1 className="text-4xl font-[900] text-[#1e293b] tracking-tight uppercase">
+            System Security Logs
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Real-time monitoring of IoT equipment activities and access attempts.
+          </p>
+        </div>
+
       </div>
 
       <button
@@ -36,6 +51,7 @@ export default function Header({ setSidebarOpen, onRefresh }) {
         <RotateCcw size={18} className={isPressed ? "animate-spin" : ""} />
         Refresh
       </button>
+
     </header>
   );
 }

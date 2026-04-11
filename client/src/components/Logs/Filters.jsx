@@ -22,15 +22,18 @@ const Filters = ({ onFilter, onRefresh }) => {
 
   const handleRefresh = () => {
     setRefreshPressed(true);
-    onRefresh?.();
 
-    setEventType("");
-    setUser("");
-    setEquipment("");
-    setDateFrom("");
-    setDateTo("");
+    setTimeout(() => {
+      onRefresh?.();
 
-    setTimeout(() => setRefreshPressed(false), 250);
+      setEventType("");
+      setUser("");
+      setEquipment("");
+      setDateFrom("");
+      setDateTo("");
+
+      setRefreshPressed(false);
+    }, 150);
   };
 
   return (
@@ -39,8 +42,9 @@ const Filters = ({ onFilter, onRefresh }) => {
       className="flex flex-wrap items-end gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-slate-200"
     >
       <div className="flex flex-col">
-        <label className="text-sm text-slate-600 mb-1">Event Type</label>
+        <label htmlFor="eventType" className="text-sm text-slate-600 mb-1">Event Type</label>
         <select
+          id="eventType"
           value={eventType}
           onChange={(e) => setEventType(e.target.value)}
           className="border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -54,8 +58,9 @@ const Filters = ({ onFilter, onRefresh }) => {
       </div>
 
       <div className="flex flex-col">
-        <label className="text-sm text-slate-600 mb-1">User</label>
+        <label htmlFor="user" className="text-sm text-slate-600 mb-1">User</label>
         <input
+          id="user"
           type="text"
           value={user}
           onChange={(e) => setUser(e.target.value)}
@@ -65,8 +70,9 @@ const Filters = ({ onFilter, onRefresh }) => {
       </div>
 
       <div className="flex flex-col">
-        <label className="text-sm text-slate-600 mb-1">Equipment</label>
+        <label htmlFor="equipment" className="text-sm text-slate-600 mb-1">Equipment</label>
         <input
+          id="equipment"
           type="text"
           value={equipment}
           onChange={(e) => setEquipment(e.target.value)}
@@ -76,8 +82,9 @@ const Filters = ({ onFilter, onRefresh }) => {
       </div>
 
       <div className="flex flex-col">
-        <label className="text-sm text-slate-600 mb-1">Date From</label>
+        <label htmlFor="dateFrom" className="text-sm text-slate-600 mb-1">Date From</label>
         <input
+          id="dateFrom"
           type="date"
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
@@ -86,8 +93,9 @@ const Filters = ({ onFilter, onRefresh }) => {
       </div>
 
       <div className="flex flex-col">
-        <label className="text-sm text-slate-600 mb-1">Date To</label>
+        <label htmlFor="dateTo" className="text-sm text-slate-600 mb-1">Date To</label>
         <input
+          id="dateTo"
           type="date"
           value={dateTo}
           onChange={(e) => setDateTo(e.target.value)}
@@ -120,7 +128,7 @@ const Filters = ({ onFilter, onRefresh }) => {
             border border-slate-200
             ${refreshPressed
               ? "bg-slate-300 text-slate-900 shadow-lg shadow-slate-400/50"
-              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              : "bg-white text-slate-700 hover:bg-slate-100"
             }
           `}
         >
