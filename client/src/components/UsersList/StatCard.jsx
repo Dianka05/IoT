@@ -1,5 +1,12 @@
 const StatCard = ({ icon: Icon, label, value, trend, status, iconBg }) => (
-  <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm flex flex-col justify-between h-40">
+  <div className="
+    bg-white/80 backdrop-blur-sm
+    p-6 rounded-[24px]
+    border border-slate-100
+    shadow-sm hover:shadow-md
+    transition
+    flex flex-col justify-between h-40
+  ">
     <div className="flex justify-between items-start">
       <div className={`p-3 rounded-xl ${iconBg}`}>
         <Icon size={20} className="text-slate-700" />

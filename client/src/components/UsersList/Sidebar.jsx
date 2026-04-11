@@ -14,7 +14,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     <>
       <aside className="
         hidden md:flex
-        w-72 bg-white border-r border-slate-100 flex-col min-h-screen
+        w-72 bg-white border-r border-slate-100 flex-col h-screen
       ">
         <SidebarContent />
       </aside>
