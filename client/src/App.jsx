@@ -5,6 +5,7 @@ import DeviceDetails from './pages/DeviceDetails';
 import UsersList from './pages/UsersList';
 import Logs from './pages/Logs';
 
+
 const Maintenance = () => <div className="p-8">Maintenance Page (In Progress)</div>;
 const Settings = () => <div className="p-8">Settings Page (In Progress)</div>;
 
