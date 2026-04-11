@@ -3,9 +3,10 @@ import Dashboard from './pages/dashboard';
 import AdminDashboard from './pages/adminDashboard';
 import DeviceDetails from './pages/DeviceDetails';
 import UsersList from './pages/UsersList';
+import Logs from './pages/Logs';
+
 
 const Maintenance = () => <div className="p-8">Maintenance Page (In Progress)</div>;
-const Logs = () => <div className="p-8">Logs Page (In Progress)</div>;
 const Settings = () => <div className="p-8">Settings Page (In Progress)</div>;
 
 function App() {
