@@ -7,7 +7,7 @@ const SessionCard = ({ id, technician }) => {
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 0) {
-          clearInterval(timer); 
+          clearInterval(timer);
           return 0;
         }
         return prev - 1;
@@ -23,7 +23,7 @@ const SessionCard = ({ id, technician }) => {
     const secs = totalSeconds % 60;
 
     return [hrs, mins, secs]
-      .map((v) => (v < 10 ? '0' + v : v)) 
+      .map((v) => (v < 10 ? '0' + v : v))
       .join(':');
   };
 
