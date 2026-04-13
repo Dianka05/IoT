@@ -1,8 +1,8 @@
-const tabs = ["All Users", "Admins", "Technicians", "User"];
+const tabs = ["All Users", "Admins", "Technicians", "Users"];
 
 const UserTabs = ({ activeTab, setActiveTab }) => {
   return (
-    <div className="flex gap-6 border-b border-slate-200 space-y-6">
+    <div className="flex gap-6 border-b border-slate-200">
       {tabs.map((t) => (
         <button
           key={t}
