@@ -1,6 +1,11 @@
 require('dotenv').config()
-const { errorHandler, setConfig, logDebug, Errors } = require('ds-express-errors')
+const { errorHandler, setConfig, logDebug } = require('ds-express-errors')
 const express = require('express')
+
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+const schemas = require('./src/docs/swagger.schemas')
+
 
 const fanRoutes = require('./src/modules/devices/fan-1/device.routes')
 const mainBoxRoutes = require('./src/modules/boxes/main-box/boxes.routes')
@@ -46,12 +51,34 @@ setConfig({
       } : {}),
       error: {
         name: err.name,
+        status: err.status,
         message: err.message,
-        stack: isDev ? err.stack : undefined,
+        ...(isDev && { stack: err.stack })
       },
       
   }),
 })
+
+const options = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'ACS API',
+      version: '1.0.0',
+    },
+    components: {
+      schemas
+    }
+  },
+  apis: [
+    '*.js',
+    './src/modules/**/*.js'
+  ]
+};
+
+const swaggerSpec = swaggerJsdoc(options);
+console.log('PATHS:', Object.keys(swaggerSpec.paths || {}))
+app.use('/api', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(fanRoutes)
 app.use(mainBoxRoutes)
@@ -61,9 +88,32 @@ app.use(userRoutes)
 
 app.use(logsRoutes)
 
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Check MQTT connection
+ *     tags:
+ *       - Health
+ *     responses:
+ *       200:
+ *         description: MQTT connection status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   enum: [true, false]
+ *                   example: true
+ *                 mqttConnected:
+ *                   type: boolean
+ *                   example: true
+ */
 app.get('/health', (req, res, next) => {
   res.json({
-    success: true,
+    success: client.connected,
     mqttConnected: client.connected,
   })
 })
