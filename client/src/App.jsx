@@ -4,6 +4,7 @@ import AdminDashboard from './pages/adminDashboard';
 import DeviceDetails from './pages/DeviceDetails';
 import UsersList from './pages/UsersList';
 import Logs from './pages/Logs';
+import Equipment from './pages/Equipment';
 
 
 const Maintenance = () => <div className="p-8">Maintenance Page (In Progress)</div>;
@@ -22,6 +23,7 @@ function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<div className="p-10">404: Not Found</div>} />
         <Route path="/users" element={<UsersList />} />
+        <Route path="/equipment" element={<Equipment />} />
       </Routes>
     </Router>
   );
