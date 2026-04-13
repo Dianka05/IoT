@@ -29,10 +29,20 @@ if (BROKER_URL === false) {
   return
 }
 
-const client = mqtt.connect(BROKER_URL, {
+const options = {
   clientId: process.env.MQTT_CLIENT_ID || 'backend-express',
-  reconnectPeriod: 3000,
-})
+  // reconnectPeriod: 3000,
+  host: process.env.MQTT_HOST,
+  port: process.env.MQTT_PORT || 8883,
+  protocol: 'mqtts',
+  username: process.env.MQTT_USERNAME,
+  password: process.env.MQTT_PASSWORD,
+}
+const client = mqtt.connect(BROKER_URL, options)
+// const client = mqtt.connect(BROKER_URL, {
+//   clientId: process.env.MQTT_CLIENT_ID || 'backend-express',
+//   reconnectPeriod: 3000,
+// })
 
 client.on('connect', () => {
   logInfo('Connected to MQTT broker')
