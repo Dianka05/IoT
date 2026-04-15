@@ -5,6 +5,7 @@ import DeviceDetails from './pages/DeviceDetails';
 import UsersList from './pages/UsersList';
 import Logs from './pages/Logs';
 import Equipment from './pages/Equipment';
+import EnvironmentDashboard from './pages/EnvironmentDashboard';
 
 
 const Maintenance = () => <div className="p-8">Maintenance Page (In Progress)</div>;
@@ -16,6 +17,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/environment-dashboard" element={<EnvironmentDashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/device-details" element={<DeviceDetails />} />
         <Route path="/maintenance" element={<Maintenance />} />
