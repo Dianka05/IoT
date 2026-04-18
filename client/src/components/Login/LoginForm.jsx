@@ -41,7 +41,6 @@ export default function LoginForm() {
         Login
       </button>
 
-      {/* Forgot password */}
       <div className="text-center">
         <button
           onClick={() => navigate("/forgot-password")}
@@ -51,7 +50,6 @@ export default function LoginForm() {
         </button>
       </div>
 
-      {/* Register */}
       <div className="text-center">
         <button
           onClick={() => navigate("/register")}
@@ -61,7 +59,6 @@ export default function LoginForm() {
         </button>
       </div>
 
-      {/* STATUS — внутри формы */}
       <div className="flex items-center justify-center gap-2 text-sm text-gray-600 pt-2">
         <span className="w-2 h-2 bg-green-500 rounded-full"></span>
         All systems operational
