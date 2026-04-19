@@ -3,11 +3,52 @@ const router = express.Router()
 const client = require('../../../mqtt/client')
 const { Errors } = require('ds-express-errors')
 const { publishAuthResult, publishEndSession } = require('./boxes.service')
+const { sendSuccessResponse } = require('../../../responses/default.response')
 
+
+/**
+ * @swagger
+ * /boxes/{boxId}/auth-result:
+ *   post:
+ *     summary: Send auth result to box
+ *     tags:
+ *       - Boxes
+ *     parameters:
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box identifier
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/BoxAuthResultRequest'
+ *     responses:
+ *       200:
+ *         description: Auth result sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       503:
+ *         description: MQTT broker is not connected
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 router.post('/boxes/:boxId/auth-result', (req, res, next) => {
   try {
     const { boxId } = req.params
-    console.log("Boxid: ", boxId)
     const { uid, allowed, userId, userName, deviceIds, sessionId, role, sessionDurationSec, mode, reason } = req.body
 
     if (!uid || typeof uid !== 'string') {
@@ -46,10 +87,7 @@ router.post('/boxes/:boxId/auth-result', (req, res, next) => {
       reason,
     })
 
-    res.json({
-      success: true,
-      sent: true,
-      info: {
+    const info = {
         sessionId,
         uid,
         allowed,
@@ -60,13 +98,57 @@ router.post('/boxes/:boxId/auth-result', (req, res, next) => {
         sessionDurationSec,
         mode,
         reason,
-      },
-    })
+      }
+
+    sendSuccessResponse(res, info)
+
+    
   } catch (error) {
     next(error)
   }
 })
 
+
+/**
+ * @swagger
+ * /boxes/{boxId}/end-session:
+ *   post:
+ *     summary: End active box session
+ *     tags:
+ *       - Boxes
+ *     parameters:
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box identifier
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/BoxEndSessionRequest'
+ *     responses:
+ *       200:
+ *         description: Session end message sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       503:
+ *         description: MQTT broker is not connected
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 router.post('/boxes/:boxId/end-session', (req, res, next) => {
 
   try {
@@ -83,15 +165,13 @@ router.post('/boxes/:boxId/end-session', (req, res, next) => {
 
     publishEndSession(boxId, { reason, sessionId })
 
-    res.json({
-      success: true,
-      sent: true,
-      info: {
-        boxId,
-        reason,
-        sessionId
-      },
-    })
+    const info = {
+      boxId,
+      reason,
+      sessionId
+    }
+
+    sendSuccessResponse(res, info)
 
   } catch (error) {
     next(error)
