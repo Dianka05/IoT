@@ -7,6 +7,7 @@ import Logs from './pages/Logs';
 import Equipment from './pages/Equipment';
 import EnvironmentDashboard from './pages/EnvironmentDashboard';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
 
 const Maintenance = () => <div className="p-8">Maintenance Page (In Progress)</div>;
 const Settings = () => <div className="p-8">Settings Page (In Progress)</div>;
@@ -27,6 +28,7 @@ function App() {
         <Route path="/users" element={<UsersList />} />
         <Route path="/equipment" element={<Equipment />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
       </Routes>
     </Router>
   );
