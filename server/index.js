@@ -1,6 +1,7 @@
 require('dotenv').config()
 const { errorHandler, setConfig, logDebug } = require('ds-express-errors')
 const express = require('express')
+const cors = require('cors')
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
@@ -12,19 +13,13 @@ const mainBoxRoutes = require('./src/modules/boxes/main-box/boxes.routes')
 const sessionRoutes = require('./src/modules/sessions/sessions.route')
 const userRoutes = require('./src/modules/users/users.routes')
 const logsRoutes = require('./src/modules/logs/logs.routes')
+const authRoutes = require('./src/modules/auth/auth.routes')
+const activitiesRoutes = require('./src/modules/activities/activities.routes')
 
+const cookieParser = require('cookie-parser')
 
 const client = require('./src/mqtt/client')
 const { initMqtt } = require('./src/mqtt/init')
-// const { db } = require('./src/integrations/firebase/firebase.client')
-// const { writeLog, getRecentLogs } = require('./src/modules/logs/logs.store.firestore')
-// const {
-//   logAuthRequestReceived,
-//   logAuthDenied,
-//   logAuthGranted,
-//   logSessionStarted,
-//   logSessionEnded,
-// } = require('./src/modules/logs/logs.service')
 
 
 try {
@@ -36,6 +31,7 @@ try {
 
 const app = express()
 app.use(express.json())
+app.use(cors())
 
 setConfig({
   maxLoggerRequests: 100000,
@@ -87,6 +83,12 @@ app.use(sessionRoutes)
 app.use(userRoutes)
 
 app.use(logsRoutes)
+
+app.use(activitiesRoutes)
+
+
+app.use(cookieParser())
+app.use(authRoutes)
 
 /**
  * @swagger
