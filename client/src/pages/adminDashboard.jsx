@@ -1,6 +1,7 @@
 import { useState } from "react";
-import Sidebar from '../components/UsersList/Sidebar';
+import Sidebar from '../components/AdminSidebar';
 import StatCard from '../components/adminDashboard/StatCard';
+import AdminDashboardHeader from "../components/adminDashboard/AdminDashboardHeader";
 import EquipmentTable from '../components/adminDashboard/EquipmentTable';
 import LiveActivity from '../components/adminDashboard/LiveActivity';
 import { 
@@ -25,33 +26,17 @@ const QuickActionBtn = ({ icon: Icon, label }) => (
   </button>
 );
 
-const AdminDashboard = () => {
+export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc]">
+    <div className="flex min-h-screen h-screen bg-[#f8fafc] overflow-hidden">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto">
           
-          <div className="mb-10 flex items-center gap-4">
-            <button 
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2.5 bg-white border border-slate-100 rounded-xl shadow-sm text-slate-600 active:scale-95 transition-transform"
-            >
-              <Menu size={24} />
-            </button>
-
-            <div>
-              <h1 className="text-3xl md:text-4xl font-[1000] text-slate-800 uppercase tracking-tight leading-none">
-                System Overview
-              </h1>
-              <p className="text-slate-400 font-bold text-sm mt-1">
-                Welcome back, Admin
-              </p>
-            </div>
-          </div>
+          <AdminDashboardHeader setSidebarOpen={setSidebarOpen} />
 
           <div className="grid grid-cols-12 gap-8">
             <div className="col-span-12 lg:col-span-8 space-y-10">
@@ -95,5 +80,3 @@ const AdminDashboard = () => {
     </div>
   );
 };
-
-export default AdminDashboard;

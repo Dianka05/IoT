@@ -16,10 +16,8 @@ const EnvironmentDashboard = () => {
       <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full">
         <div className="max-w-[1400px] mx-auto">
           
-          {/* Header: Адаптивное выравнивание */}
           <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
             <div className="flex items-center gap-4">
-              {/* Бургер виден только на мобилках */}
               <button 
                 onClick={() => setSidebarOpen(true)}
                 className="md:hidden p-2.5 bg-white border border-slate-100 rounded-xl shadow-sm active:scale-95 transition-transform"
@@ -52,10 +50,8 @@ const EnvironmentDashboard = () => {
             </button>
           </header>
 
-          {/* Сетка: 1 колонка на мобилках, 12 на десктопе */}
           <div className="grid grid-cols-12 gap-5 md:gap-6">
             
-            {/* Левая сторона: Статистика и Таблица */}
             <div className="col-span-12 lg:col-span-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                 <StatCard 
@@ -78,13 +74,11 @@ const EnvironmentDashboard = () => {
                 />
               </div>
               
-              {/* Обертка для таблицы для скролла на мобилках */}
               <div className="w-full overflow-hidden">
                  <SensorTable />
               </div>
             </div>
 
-            {/* Правая сторона: Алерты и Система */}
             <div className="col-span-12 lg:col-span-4 space-y-6">
               <AlertsPanel />
               <SystemIdentity />

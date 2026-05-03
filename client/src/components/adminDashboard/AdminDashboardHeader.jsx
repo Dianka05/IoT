@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Bell, UserPlus, Menu, RotateCcw } from "lucide-react";
+import { Menu, Bell, RotateCcw } from "lucide-react";
 
-export default function UsersListHeader({ setSidebarOpen }) {
+export default function AdminDashboardHeader({ setSidebarOpen }) {
   const [spin, setSpin] = useState(false);
 
   const handleRefresh = () => {
@@ -10,7 +10,7 @@ export default function UsersListHeader({ setSidebarOpen }) {
   };
 
   return (
-    <header className="w-full mb-8">
+    <header className="w-full mb-10">
 
       <div
         className="
@@ -21,11 +21,11 @@ export default function UsersListHeader({ setSidebarOpen }) {
       >
 
         <div className="order-2 md:order-1">
-          <h1 className="text-3xl md:text-4xl font-[900] text-[#1e293b] tracking-tight uppercase">
-            System Users
+          <h1 className="text-3xl md:text-4xl font-[900] text-slate-800 uppercase tracking-tight">
+            System Overview
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage and control access for all registered system users.
+            Welcome back, Admin
           </p>
         </div>
 
@@ -42,18 +42,7 @@ export default function UsersListHeader({ setSidebarOpen }) {
             <Menu size={24} className="text-slate-700" />
           </button>
 
-          <div className="flex items-center gap-4">
-
-            <button
-              className="
-                flex items-center gap-2
-                bg-orange-500 text-white px-4 py-2 rounded-xl font-semibold
-                hover:bg-orange-600 transition
-              "
-            >
-              <UserPlus size={20} />
-              Add New User
-            </button>
+          <div className="flex items-center gap-3">
 
             <button
               className="
@@ -76,7 +65,7 @@ export default function UsersListHeader({ setSidebarOpen }) {
                 size={24}
                 className={`
                   text-slate-700 transition-transform duration-300
-                  ${spin ? "rotate-90" : "rotate-0"}
+                  ${spin ? "rotate-[120deg]" : "rotate-0"}
                 `}
               />
             </button>

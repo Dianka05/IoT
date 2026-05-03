@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import Sidebar from "../components/Logs/Sidebar";
+import Sidebar from "../components/AdminSidebar";
 import Header from "../components/Logs/Header";
 import Filters from "../components/Logs/Filters";
 import LogsTable, { logsData } from "../components/Logs/LogsTable";
