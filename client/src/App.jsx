@@ -9,6 +9,7 @@ import EnvironmentDashboard from './pages/EnvironmentDashboard';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import Registration from './pages/Registration';
+import Sessions from './pages/Sessions';
 
 const Maintenance = () => <div className="p-8">Maintenance Page (In Progress)</div>;
 const Settings = () => <div className="p-8">Settings Page (In Progress)</div>;
@@ -31,6 +32,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/register" element={<Registration />} />
+        <Route path="/sessions" element={<Sessions />} />
       </Routes>
     </Router>
   );
