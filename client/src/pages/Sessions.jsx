@@ -285,7 +285,7 @@ export default function Sessions() {
   const pageData = sessionsState.slice(start, end);
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc]">
+    <div className="flex min-h-screen h-screen bg-[#f8fafc] overflow-hidden">
 
       <AdminSidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 

@@ -31,7 +31,7 @@ const SidebarEquipment = ({ isOpen, setIsOpen }) => {
 
       <aside
         className={`
-          fixed top-0 left-0 h-full w-72 bg-white border-r border-slate-100 flex-col z-50 p-0
+          fixed top-0 left-0 h-full w-72 bg-white border-r border-slate-100 flex flex-col z-50 p-0
           transform transition-transform duration-300 md:hidden
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
@@ -44,7 +44,7 @@ const SidebarEquipment = ({ isOpen, setIsOpen }) => {
 
 const SidebarContent = () => {
   return (
-    <>
+    <div className="flex flex-col h-full">
       <div className="p-8 mb-4">
         <div className="flex items-center gap-3">
           <div className="bg-orange-500 p-2.5 rounded-xl shadow-lg shadow-orange-200">
@@ -81,9 +81,10 @@ const SidebarContent = () => {
           System Status: Active
         </div>
       </div>
-    </>
+    </div>
   );
 };
+
 
 const NavButton = ({ to, icon, label }) => {
   return (

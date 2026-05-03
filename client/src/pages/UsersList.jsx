@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import Sidebar from '../components/UsersList/Sidebar';
+import Sidebar from '../components/AdminSidebar';
 import UsersListHeader from '../components/UsersList/UsersListHeader';
 import UserStatsCards from '../components/UsersList/UserStatsCards';
 import UserTabs from '../components/UsersList/UserTabs';
@@ -11,7 +11,7 @@ export default function UsersList() {
   const [activeTab, setActiveTab] = useState("All Users");
 
   return (
-    <div className="min-h-screen flex bg-[#f8fafc] overflow-hidden">
+    <div className="flex min-h-screen h-screen bg-[#f8fafc] overflow-hidden">
 
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 

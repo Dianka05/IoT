@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import SidebarEquipment from "../components/Equipment/SidebarEquipment";
+import SidebarEquipment from "../components/AdminSidebar";
 import HeaderEquipment from "../components/Equipment/HeaderEquipment";
 import UserSelectorEquipment from "../components/Equipment/UserSelectorEquipment";
 import ActionsEquipment from "../components/Equipment/ActionsEquipment";
