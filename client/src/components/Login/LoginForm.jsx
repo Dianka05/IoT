@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../../api/auth"; // Импорт функции
+import { login } from "../../api/auth"; 
 
 export default function LoginForm() {
   const navigate = useNavigate();
@@ -22,11 +22,9 @@ export default function LoginForm() {
       const result = await login(form.email, form.password);
 
       if (result.success) {
-        // Сервер установил куку, теперь можно пускать пользователя в систему
         alert("Login successful!");
         navigate("/dashboard"); 
       } else {
-        // Ошибка от бэкенда (неверный пароль, юзер не найден и т.д.)
         alert(result.error?.message || "Login failed");
       }
     } catch (err) {

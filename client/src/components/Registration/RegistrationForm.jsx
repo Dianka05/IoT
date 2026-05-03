@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { register } from "../../api/auth"; // Путь к твоему файлу auth.js
+import { register } from "../../api/auth"; 
 
 export default function RegistrationForm() {
   const navigate = useNavigate();
@@ -18,13 +18,11 @@ export default function RegistrationForm() {
   };
 
   const handleSubmit = async () => {
-    // 1. Валидация совпадения паролей
     if (form.password !== form.confirm) {
       alert("Passwords do not match");
       return;
     }
 
-    // 2. Валидация заполнения полей
     if (!form.email || !form.password) {
       alert("Please fill in all fields");
       return;
@@ -33,20 +31,15 @@ export default function RegistrationForm() {
     setLoading(true);
 
     try {
-      // 3. Отправка данных на бэкенд
-      // Передаем email и password. Третий аргумент (name) опционален.
       const result = await register(form.email, form.password);
 
       if (result.success) {
         alert("Account created successfully");
-        // После успешной регистрации перенаправляем на логин или главную
         navigate("/login");
       } else {
-        // Выводим ошибку из объекта, который прислал твой бэкенд
         alert(result.error?.message || "Registration failed");
       }
     } catch (err) {
-      // Обработка сетевых ошибок (если бэкенд недоступен)
       console.error("Registration error:", err);
       alert("Server is not responding. Please try again later.");
     } finally {
