@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { register } from "../../api/auth"; // Путь к твоему файлу auth.js
 
 export default function RegistrationForm() {
   const navigate = useNavigate();
@@ -10,22 +11,51 @@ export default function RegistrationForm() {
     confirm: "",
   });
 
+  const [loading, setLoading] = useState(false);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    // 1. Валидация совпадения паролей
     if (form.password !== form.confirm) {
       alert("Passwords do not match");
       return;
     }
 
-    alert("Account created successfully");
+    // 2. Валидация заполнения полей
+    if (!form.email || !form.password) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // 3. Отправка данных на бэкенд
+      // Передаем email и password. Третий аргумент (name) опционален.
+      const result = await register(form.email, form.password);
+
+      if (result.success) {
+        alert("Account created successfully");
+        // После успешной регистрации перенаправляем на логин или главную
+        navigate("/login");
+      } else {
+        // Выводим ошибку из объекта, который прислал твой бэкенд
+        alert(result.error?.message || "Registration failed");
+      }
+    } catch (err) {
+      // Обработка сетевых ошибок (если бэкенд недоступен)
+      console.error("Registration error:", err);
+      alert("Server is not responding. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="space-y-4">
-
       <h2 className="text-xl font-semibold text-gray-800 text-center">
         Create an account
       </h2>
@@ -43,7 +73,8 @@ export default function RegistrationForm() {
           name="email"
           value={form.email}
           onChange={handleChange}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none"
+          disabled={loading}
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none disabled:bg-gray-100"
           placeholder="you@example.com"
         />
       </div>
@@ -57,7 +88,8 @@ export default function RegistrationForm() {
           name="password"
           value={form.password}
           onChange={handleChange}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none"
+          disabled={loading}
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none disabled:bg-gray-100"
           placeholder="••••••••"
         />
       </div>
@@ -71,16 +103,22 @@ export default function RegistrationForm() {
           name="confirm"
           value={form.confirm}
           onChange={handleChange}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none"
+          disabled={loading}
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none disabled:bg-gray-100"
           placeholder="••••••••"
         />
       </div>
 
       <button
         onClick={handleSubmit}
-        className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-2 rounded-lg font-medium transition"
+        disabled={loading}
+        className={`w-full text-white py-2 rounded-lg font-medium transition ${
+          loading 
+            ? "bg-orange-300 cursor-not-allowed" 
+            : "bg-orange-500 hover:bg-orange-600 active:bg-orange-700"
+        }`}
       >
-        Register
+        {loading ? "Registering..." : "Register"}
       </button>
 
       <div className="text-center">
@@ -91,7 +129,6 @@ export default function RegistrationForm() {
           Back to login
         </button>
       </div>
-
     </div>
   );
 }
