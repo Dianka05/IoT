@@ -3,7 +3,6 @@ const {
   recordBoxStatus,
   recordBoxSessions,
   recordDeviceStatus,
-  recordDeviceFanState,
 } = require('../modules/activities/activities.service')
 
 function parseTopic(topic) {
@@ -62,12 +61,12 @@ async function handleMqttMessage(topic, messageBuffer) {
   }
 }
 
-async function handleFanState(deviceId, msg) {
-  const payload = msg.payload || msg
+// async function handleFanState(deviceId, msg) {
+//   const payload = msg.payload || msg
 
-  await recordDeviceFanState(deviceId, payload)
-  console.log(`Fan state updated [${deviceId}]:`, payload)
-}
+//   await recordDeviceFanState(deviceId, payload)
+//   console.log(`Fan state updated [${deviceId}]:`, payload)
+// }
 
 async function handleDeviceStatus(deviceId, msg) {
   const payload = msg.payload || msg

@@ -39,10 +39,7 @@ const options = {
   password: process.env.MQTT_PASSWORD,
 }
 const client = mqtt.connect(BROKER_URL, options)
-// const client = mqtt.connect(BROKER_URL, {
-//   clientId: process.env.MQTT_CLIENT_ID || 'backend-express',
-//   reconnectPeriod: 3000,
-// })
+
 
 client.on('connect', () => {
   logInfo('Connected to MQTT broker')
