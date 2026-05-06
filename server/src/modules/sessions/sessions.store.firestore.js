@@ -111,6 +111,23 @@ async function isDeviceBusy(deviceId) {
   })
 }
 
+async function findActiveSessionByDeviceId(deviceId) {
+  const snapshot = await db
+    .collection('sessions')
+    .where('deviceIds', 'array-contains', deviceId)
+    .limit(20)
+    .get()
+
+  const match = snapshot.docs.find((doc) => {
+    const data = doc.data()
+    return ACTIVE_SESSION_STATUSES.includes(data.status)
+  })
+
+  if (!match) return null
+
+  return mapDoc(match)
+}
+
 module.exports = {
   createSession,
   getSession,
@@ -118,5 +135,6 @@ module.exports = {
   markSessionStarted,
   endSession,
   isDeviceBusy,
-  findPendingSessionForAuth
+  findPendingSessionForAuth,
+  findActiveSessionByDeviceId,
 }

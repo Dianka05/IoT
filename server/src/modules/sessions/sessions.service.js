@@ -5,6 +5,10 @@ const {
   publishEndSession,
   publishAuthResult,
 } = require('../boxes/main-box/boxes.service')
+const {
+  publishDeviceAccessSet,
+  publishDeviceEndSession,
+} = require('../devices/fan-1/device.service')
 
 
 const {
@@ -64,8 +68,17 @@ async function handleSessionStarted(msg) {
   const { sessionId } = msg.payload
   if (!sessionId) return null
 
- const session = await store.markSessionStarted(sessionId)
+  const session = await store.markSessionStarted(sessionId)
   if (session) {
+    for (const deviceId of session.deviceIds || []) {
+      publishDeviceAccessSet(
+        deviceId,
+        true,
+        session.sessionId,
+        session.sessionDurationSec,
+      )
+    }
+
     await logSessionStarted({
       boxId: session.boxId,
       sessionId: session.sessionId,
@@ -80,6 +93,13 @@ async function handleSessionEnded(msg) {
 
   const { sessionId } = msg.payload
   if (!sessionId) return null
+
+  const existingSession = await store.getSession(sessionId)
+  if (existingSession) {
+    for (const deviceId of existingSession.deviceIds || []) {
+      publishDeviceEndSession(deviceId, msg.payload.reason || 'box_session_ended')
+    }
+  }
 
   const session = await store.endSession(sessionId)
   await logSessionEnded(msg.payload, session)
@@ -96,6 +116,24 @@ async function forceEndSession(boxId, sessionId, reason = 'manual') {
   if (!session) return null
 
   publishEndSession(boxId, { sessionId, reason })
+  return session
+}
+
+async function forceEndSessionByDeviceId(deviceId, reason = 'manual', sessionId = null) {
+  const session = sessionId
+    ? await store.getSession(sessionId)
+    : await store.findActiveSessionByDeviceId(deviceId)
+
+  if (!session) return null
+
+  if (!(session.deviceIds || []).includes(deviceId)) {
+    return null
+  }
+
+  if (session.boxId) {
+    publishEndSession(session.boxId, { sessionId: session.sessionId, reason })
+  }
+
   return session
 }
 
@@ -150,7 +188,14 @@ async function startSessionById(sessionId) {
   return store.markSessionStarted(sessionId)
 }
 
-async function endSessionById(sessionId) {
+async function endSessionById(sessionId, reason = 'manual') {
+  const session = await store.getSession(sessionId)
+  if (!session) return null
+
+  if (session.boxId) {
+    publishEndSession(session.boxId, { sessionId, reason })
+  }
+
   return store.endSession(sessionId)
 }
 
@@ -164,5 +209,6 @@ module.exports = {
   getSessionById,
   startSessionById,
   endSessionById,
+  forceEndSessionByDeviceId,
   createPendingSession,
 }

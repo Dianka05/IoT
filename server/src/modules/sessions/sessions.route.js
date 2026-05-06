@@ -242,7 +242,13 @@ router.post('/sessions/:sessionId/start', async (req, res, next) => {
  */
 router.post('/sessions/:sessionId/end', async (req, res, next) => {
   try {
-    const item = await endSessionById(req.params.sessionId)
+    const { reason } = req.body || {}
+
+    if (reason !== undefined && typeof reason !== 'string') {
+      return next(Errors.BadRequest('`reason` must be a string'))
+    }
+
+    const item = await endSessionById(req.params.sessionId, reason || 'manual')
 
     if (!item) {
       return next(Errors.NotFound('Session not found'))

@@ -24,9 +24,9 @@ async function handleMqttMessage(topic, messageBuffer) {
 
     const { entityType, entityId, channelType, name } = parsed
 
-    if (entityType === 'device' && channelType === 'state' && name === 'fan') {
-      return await handleFanState(entityId, msg)
-    }
+    // if (entityType === 'device' && channelType === 'state' && name === 'fan') {
+    //   return await handleFanState(entityId, msg)
+    // }
 
     if (entityType === 'device' && channelType === 'state' && name === 'status') {
       return await handleDeviceStatus(entityId, msg)
