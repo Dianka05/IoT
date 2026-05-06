@@ -1,11 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Fingerprint, ChevronDown, Loader2, Search } from "lucide-react";
-import axios from "axios";
-
-const api = axios.create({
-  baseURL: "http://localhost:3000",
-  withCredentials: true
-});
+import api from "../../api/http";
 
 export default function AddUserModal({ isOpen, onClose, userToEdit = null, onRefresh }) {
   const [loading, setLoading] = useState(false);
@@ -50,9 +45,9 @@ export default function AddUserModal({ isOpen, onClose, userToEdit = null, onRef
     setError(null);
     try {
       const res = await api.get(`/users/by-uid/${searchQuery.trim()}`);
-      const user = res.data.item;
+      const user = res.data?.data;
       setFormData({
-        uid: user.id,
+        uid: user?.id || "",
         name: user.name || "",
         role: user.role || "user",
         email: user.email || "",
@@ -94,10 +89,12 @@ export default function AddUserModal({ isOpen, onClose, userToEdit = null, onRef
   };
 
   const handleAddDevice = () => {
-    if (newDeviceId.trim() && !formData.allowedDeviceIds.includes(newDeviceId)) {
+    const trimmedDeviceId = newDeviceId.trim();
+
+    if (trimmedDeviceId && !formData.allowedDeviceIds.includes(trimmedDeviceId)) {
       setFormData({
         ...formData,
-        allowedDeviceIds: [...formData.allowedDeviceIds, newDeviceId.trim()]
+        allowedDeviceIds: [...formData.allowedDeviceIds, trimmedDeviceId]
       });
       setNewDeviceId("");
       setIsAddingDevice(false);

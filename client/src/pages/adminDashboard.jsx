@@ -1,22 +1,14 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { 
   Users, 
-  Settings, 
   Plus, 
   Search, 
-  Filter, 
-  MoreVertical, 
   ChevronRight,
   Loader2,
   RefreshCcw
 } from "lucide-react";
-import axios from "axios";
+import api from "../api/http";
 import AddUserModal from "../components/adminDashboard/AddUserModal";
-
-const api = axios.create({
-  baseURL: "http://localhost:3000",
-  withCredentials: true
-});
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
@@ -29,7 +21,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const response = await api.get("/users");
-      setUsers(response.data.items || []);
+      setUsers(response.data?.data?.items || []);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
