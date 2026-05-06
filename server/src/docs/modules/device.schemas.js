@@ -1,5 +1,5 @@
 const DeviceSchemas = {
-  FanSetRequest: {
+  DeviceAccessSetRequest: {
     type: 'object',
     required: ['enabled'],
     properties: {
@@ -9,26 +9,25 @@ const DeviceSchemas = {
       },
       sessionId: {
         type: 'string',
-        example: 'sess_123',
+        example: 'session-123',
       },
-      deviceId: {
-        type: 'string',
-        example: 'fan_device_1',
+      durationSec: {
+        type: 'integer',
+        example: 600,
       },
     },
   },
 
-  FanSetSuccessResponse: {
+  DeviceEndSessionRequest: {
     type: 'object',
-    required: ['success', 'enabled'],
     properties: {
-      success: {
-        type: 'boolean',
-        enum: [true],
+      sessionId: {
+        type: 'string',
+        example: 'session-123',
       },
-      enabled: {
-        type: 'boolean',
-        enum: [true, false],
+      reason: {
+        type: 'string',
+        example: 'manual',
       },
     },
   },

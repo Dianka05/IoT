@@ -1,38 +1,44 @@
 const {
-  logInfo,
   Errors,
 } = require('ds-express-errors')
 const express = require('express')
-const { publishFanSet, addDevice,
+const { publishDeviceAccessSet, publishDeviceEndSession, addDevice,
   getDevices,
   getDevice,
   patchDevice,
   removeDevice, } = require('./device.service')
+const { forceEndSessionByDeviceId } = require('../../sessions/sessions.service')
 const client = require('../../../mqtt/client')
 const { sendSuccessResponse } = require('../../../responses/default.response')
 const router = express.Router()
 
-
 /**
  * @swagger
- * /fan:
+ * /devices/{deviceId}/access-set:
  *   post:
- *     summary: Set fan state
+ *     summary: Send access_set command to device
  *     tags:
- *       - Device
+ *       - Devices
+ *     parameters:
+ *       - in: path
+ *         name: deviceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device identifier
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/FanSetRequest'
+ *             $ref: '#/components/schemas/DeviceAccessSetRequest'
  *     responses:
  *       200:
- *         description: Fan command sent successfully
+ *         description: access_set command sent successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/FanSetSuccessResponse'
+ *               $ref: '#/components/schemas/SuccessResponse'
  *       400:
  *         description: Validation error
  *         content:
@@ -46,29 +52,119 @@ const router = express.Router()
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/fan', (req, res, next) => {
+router.post('/devices/:deviceId/access-set', (req, res, next) => {
   try {
-    const { enabled, sessionId, deviceId } = req.body
-    
+    const { deviceId } = req.params
+    const { enabled, sessionId, durationSec } = req.body || {}
 
-    logInfo('HTTP POST /fan called with: ' + JSON.stringify(req.body))
+    if (!deviceId || typeof deviceId !== 'string') {
+      return next(Errors.BadRequest('`deviceId` must be a non-empty string'))
+    }
 
     if (typeof enabled !== 'boolean') {
       return next(Errors.BadRequest('`enabled` must be boolean'))
+    }
+
+    if (enabled && (!sessionId || typeof sessionId !== 'string')) {
+      return next(Errors.BadRequest('`sessionId` must be a non-empty string when `enabled=true`'))
+    }
+
+    if (durationSec !== undefined) {
+      if (!Number.isInteger(durationSec) || durationSec < 0) {
+        return next(Errors.BadRequest('`durationSec` must be a non-negative integer'))
+      }
     }
 
     if (!client.connected) {
       return next(Errors.ServiceUnavailable('MQTT broker is not connected'))
     }
 
+    publishDeviceAccessSet(deviceId, enabled, sessionId, durationSec)
+
+    sendSuccessResponse(res, {
+      deviceId,
+      enabled,
+      sessionId: sessionId || null,
+      durationSec: durationSec ?? null,
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * @swagger
+ * /devices/{deviceId}/end-session:
+ *   post:
+ *     summary: Send end_session command to device
+ *     tags:
+ *       - Devices
+ *     parameters:
+ *       - in: path
+ *         name: deviceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device identifier
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/DeviceEndSessionRequest'
+ *     responses:
+ *       200:
+ *         description: end_session command sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       503:
+ *         description: MQTT broker is not connected
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/devices/:deviceId/end-session', (req, res, next) => {
+  try {
+    const { deviceId } = req.params
+    const { reason, sessionId } = req.body || {}
+
     if (!deviceId || typeof deviceId !== 'string') {
       return next(Errors.BadRequest('`deviceId` must be a non-empty string'))
     }
 
-    publishFanSet(deviceId, enabled, sessionId)
+    if (reason !== undefined && typeof reason !== 'string') {
+      return next(Errors.BadRequest('`reason` must be a string'))
+    }
 
-    sendSuccessResponse(res, enabled)
-   
+    if (sessionId !== undefined && typeof sessionId !== 'string') {
+      return next(Errors.BadRequest('`sessionId` must be a string'))
+    }
+
+    if (!client.connected) {
+      return next(Errors.ServiceUnavailable('MQTT broker is not connected'))
+    }
+
+    publishDeviceEndSession(deviceId, reason || 'manual')
+
+    Promise.resolve(forceEndSessionByDeviceId(deviceId, reason || 'manual', sessionId))
+      .then((session) => {
+        sendSuccessResponse(res, {
+          deviceId,
+          reason: reason || 'manual',
+          sessionId: session ? session.sessionId : sessionId || null,
+          boxId: session ? session.boxId : null,
+        })
+      })
+      .catch(next)
   } catch (error) {
     next(error)
   }

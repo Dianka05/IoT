@@ -46,6 +46,29 @@ function publishFanSet(deviceId, enabled, sessionId) {
   })
 }
 
+function publishDeviceAccessSet(deviceId, enabled, sessionId, durationSec) {
+  return publishDeviceCommand(deviceId, 'access_set', {
+    enabled,
+    sessionId,
+    durationSec,
+    requestedBy: 'backend',
+  })
+}
+
+function publishDeviceEndSession(deviceId, reason) {
+  return publishDeviceCommand(deviceId, 'end_session', {
+    reason,
+    requestedBy: 'backend',
+  })
+}
+
 module.exports = {
+  addDevice,
+  getDevices,
+  getDevice,
+  patchDevice,
+  removeDevice,
   publishFanSet,
+  publishDeviceAccessSet,
+  publishDeviceEndSession,
 }
