@@ -11,7 +11,7 @@ import {
   RefreshCcw
 } from "lucide-react";
 import axios from "axios";
-import AddUserModal from "./AddUserModal";
+import AddUserModal from "../components/adminDashboard/AddUserModal";
 
 const api = axios.create({
   baseURL: "http://localhost:3000",
@@ -179,7 +179,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <AddUserModal 
+      <AddUserModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         userToEdit={selectedUser}
