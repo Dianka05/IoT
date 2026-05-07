@@ -1,219 +1,143 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SidebarEquipment from "../components/AdminSidebar";
 import HeaderEquipment from "../components/Equipment/HeaderEquipment";
-import UserSelectorEquipment from "../components/Equipment/UserSelectorEquipment";
-import ActionsEquipment from "../components/Equipment/ActionsEquipment";
 import ListEquipment from "../components/Equipment/ListEquipment";
 import ReminderEquipment from "../components/Equipment/ReminderEquipment";
+import { getCurrentUser, getDevices } from "../api/equipment";
+
+function getDeviceId(device) {
+  return device.deviceId || device.id;
+}
+
+function normalizeDeviceStatus(device) {
+  if (device.active === false) return "DISABLED";
+
+  const status = String(device.status || "idle").toLowerCase();
+
+  if (status === "idle" || status === "free") return "FREE";
+  if (status === "busy" || status === "in_use" || status === "reserved") {
+    return "IN USE";
+  }
+
+  return status.toUpperCase();
+}
+
+function mapDeviceForEquipment(device, currentUser) {
+  const deviceId = getDeviceId(device);
+
+  return {
+    id: deviceId,
+    deviceId,
+    name: device.name || deviceId,
+    type: device.type || "device",
+    boxId: device.boxId || null,
+    status: normalizeDeviceStatus(device),
+    access: true,
+    sessionLimit: Math.round((currentUser?.sessionDurationSec || 1800) / 60),
+    raw: device,
+  };
+}
 
 const Equipment = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [users, setUsers] = useState([
-  {
-    id: 1,
-    name: "Alex Rivera",
-    role: "Admin",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: true, sessionLimit: 120 },
-      { id: 2, name: "Nimbus 2000", access: true, sessionLimit: 480 },
-      { id: 3, name: "Choto krutoje", access: false, sessionLimit: 0 },
-      { id: 4, name: "Atomovka", access: false, sessionLimit: 0 },
-    ],
-  },
-  {
-    id: 2,
-    name: "Jordan Smith",
-    role: "Technician",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: false, sessionLimit: 0 },
-      { id: 2, name: "Nimbus 2000", access: true, sessionLimit: 60 },
-      { id: 3, name: "Choto krutoje", access: true, sessionLimit: 30 },
-      { id: 4, name: "Atomovka", access: false, sessionLimit: 0 },
-    ],
-  },
-  {
-    id: 3,
-    name: "Taylor Chen",
-    role: "User",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: false, sessionLimit: 0 },
-      { id: 2, name: "Nimbus 2000", access: false, sessionLimit: 0 },
-      { id: 3, name: "Choto krutoje", access: false, sessionLimit: 0 },
-      { id: 4, name: "Atomovka", access: false, sessionLimit: 0 },
-    ],
-  },
 
-  {
-    id: 4,
-    name: "Maria Lopez",
-    role: "Admin",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: true, sessionLimit: 300 },
-      { id: 2, name: "Nimbus 2000", access: false, sessionLimit: 0 },
-      { id: 3, name: "Choto krutoje", access: true, sessionLimit: 45 },
-      { id: 4, name: "Atomovka", access: false, sessionLimit: 0 },
-    ],
-  },
-  {
-    id: 5,
-    name: "Ethan Walker",
-    role: "Technician",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: true, sessionLimit: 90 },
-      { id: 2, name: "Nimbus 2000", access: true, sessionLimit: 120 },
-      { id: 3, name: "Choto krutoje", access: false, sessionLimit: 0 },
-      { id: 4, name: "Atomovka", access: true, sessionLimit: 20 },
-    ],
-  },
-  {
-    id: 6,
-    name: "Sofia Patel",
-    role: "User",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: false, sessionLimit: 0 },
-      { id: 2, name: "Nimbus 2000", access: false, sessionLimit: 0 },
-      { id: 3, name: "Choto krutoje", access: true, sessionLimit: 15 },
-      { id: 4, name: "Atomovka", access: false, sessionLimit: 0 },
-    ],
-  },
-  {
-    id: 7,
-    name: "Liam Carter",
-    role: "User",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: true, sessionLimit: 60 },
-      { id: 2, name: "Nimbus 2000", access: false, sessionLimit: 0 },
-      { id: 3, name: "Choto krutoje", access: false, sessionLimit: 0 },
-      { id: 4, name: "Atomovka", access: true, sessionLimit: 10 },
-    ],
-  },
-  {
-    id: 8,
-    name: "Noah Kim",
-    role: "Technician",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: true, sessionLimit: 200 },
-      { id: 2, name: "Nimbus 2000", access: true, sessionLimit: 300 },
-      { id: 3, name: "Choto krutoje", access: true, sessionLimit: 120 },
-      { id: 4, name: "Atomovka", access: false, sessionLimit: 0 },
-    ],
-  },
-  {
-    id: 9,
-    name: "Emma Davis",
-    role: "Admin",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: false, sessionLimit: 0 },
-      { id: 2, name: "Nimbus 2000", access: true, sessionLimit: 240 },
-      { id: 3, name: "Choto krutoje", access: false, sessionLimit: 0 },
-      { id: 4, name: "Atomovka", access: true, sessionLimit: 30 },
-    ],
-  },
-  {
-    id: 10,
-    name: "Olivia Brown",
-    role: "User",
-    permissions: [
-      { id: 1, name: "Super Fan 3000", access: true, sessionLimit: 20 },
-      { id: 2, name: "Nimbus 2000", access: false, sessionLimit: 0 },
-      { id: 3, name: "Choto krutoje", access: false, sessionLimit: 0 },
-      { id: 4, name: "Atomovka", access: false, sessionLimit: 0 },
-    ],
-  },
-]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [devices, setDevices] = useState([]);
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [selectedUser, setSelectedUser] = useState(null);
+  const loadEquipment = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [me, devicesList] = await Promise.all([
+        getCurrentUser(),
+        getDevices(100),
+      ]);
+
+      setCurrentUser(me?.profile || null);
+      setDevices(devicesList);
+    } catch (err) {
+      console.error("Failed to load equipment:", err);
+      setError(err.message || "Failed to load equipment");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (users.length > 0) setSelectedUser(users[0]);
-  }, [users]);
+    loadEquipment();
+  }, []);
 
-  const handleToggle = (permId) => {
-    setUsers(prev =>
-      prev.map(u =>
-        u.id === selectedUser.id
-          ? {
-              ...u,
-              permissions: u.permissions.map(p =>
-                p.id === permId ? { ...p, access: !p.access } : p
-              ),
-            }
-          : u
-      )
-    );
-  };
+  const currentUserDevices = useMemo(() => {
+    if (!currentUser) return [];
 
-  const handleLimitChange = (permId, value) => {
-    setUsers(prev =>
-      prev.map(u =>
-        u.id === selectedUser.id
-          ? {
-              ...u,
-              permissions: u.permissions.map(p =>
-                p.id === permId ? { ...p, sessionLimit: Number(value) } : p
-              ),
-            }
-          : u
-      )
-    );
-  };
+    const allowedDeviceIds = new Set(currentUser.allowedDeviceIds || []);
 
-  const handleSave = () => {
-    console.log("Saving permissions for:", selectedUser.name);
-    console.log(selectedUser.permissions);
-  };
+    return devices
+      .filter((device) => {
+        const deviceId = getDeviceId(device);
 
-  const handleDelete = (permId) => {
-  setUsers(prev =>
-    prev.map(u => ({
-      ...u,
-      permissions: u.permissions.filter(p => p.id !== permId)
-    }))
-  );
-};
+        return (
+          allowedDeviceIds.has(deviceId) ||
+          allowedDeviceIds.has(device.id) ||
+          allowedDeviceIds.has(device.deviceId)
+        );
+      })
+      .map((device) => mapDeviceForEquipment(device, currentUser));
+  }, [currentUser, devices]);
 
   return (
-  <div className="h-screen flex bg-[#f8fafc] overflow-hidden">
-
-    <SidebarEquipment 
-      isOpen={sidebarOpen}
-      setIsOpen={setSidebarOpen}
-    />
-
-    <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-
-      <HeaderEquipment 
-        title="Equipment Permissions"
-        setSidebarOpen={setSidebarOpen}
+    <div className="h-screen flex bg-[#f8fafc] overflow-hidden">
+      <SidebarEquipment
+        isOpen={sidebarOpen}
+        setIsOpen={setSidebarOpen}
       />
 
-      <UserSelectorEquipment
-        users={users}
-        selectedUser={selectedUser}
-        onSelect={setSelectedUser}
-      />
-
-      <ActionsEquipment
-        user={selectedUser}
-        onSave={handleSave}
-      />
-
-      {selectedUser && (
-        <ListEquipment
-          permissions={selectedUser.permissions}
-          onToggle={handleToggle}
-          onLimitChange={handleLimitChange}
-          onDelete={handleDelete}
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+        <HeaderEquipment
+          title="My Equipment"
+          setSidebarOpen={setSidebarOpen}
         />
-      )}
 
-      <ReminderEquipment />
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-slate-900">
+            Available devices
+          </h2>
 
-    </main>
-  </div>
-);
+          <p className="text-sm text-slate-500 mt-1">
+            Devices assigned to{" "}
+            <span className="font-semibold text-slate-700">
+              {currentUser?.name || currentUser?.email || "current user"}
+            </span>
+          </p>
+        </div>
 
+        {loading && (
+          <div className="mb-6 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600">
+            Loading equipment...
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <ListEquipment
+            permissions={currentUserDevices}
+            readOnly
+          />
+        )}
+
+        <ReminderEquipment />
+      </main>
+    </div>
+  );
 };
 
 export default Equipment;
