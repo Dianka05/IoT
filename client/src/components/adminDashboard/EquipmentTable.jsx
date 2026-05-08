@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
-import { Printer, Microscope, Beaker, Laptop, Cpu, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
+import { Cpu, ChevronDown, ChevronUp } from 'lucide-react';
+import SurfaceCard from '../surfaceCard';
 
-const EquipmentTable = () => {
+const statusStyles = {
+  'IN USE': 'bg-green-50 text-green-600',
+  ACTIVE: 'bg-green-50 text-green-600',
+  IDLE: 'bg-slate-100 text-slate-400',
+  READY: 'bg-slate-100 text-slate-400',
+  OFFLINE: 'bg-red-50 text-red-600',
+};
+
+const EquipmentTable = ({ devices = [], loading = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-
-  const allDevices = [
-    { name: '3D Printer Cluster A', loc: 'Lab 4, Wing B', status: 'IN USE', icon: Printer, progress: 70 },
-    { name: 'Nimbus 2000', loc: 'Hogwarts', status: 'IDLE', icon: Microscope, progress: 0 },
-    { name: 'Spectral Analyzer', loc: 'Bio Lab 1', status: 'IN USE', icon: Beaker, progress: 45 },
-    { name: 'Workstation GPU-01', loc: 'Server Room', status: 'IN USE', icon: Laptop, progress: 90 },
-    { name: 'Logic Analyzer', loc: 'Lab 2, Wing A', status: 'IDLE', icon: Cpu, progress: 0 },
-    { name: 'Laser Cutter X', loc: 'Workshop', status: 'IN USE', icon: Printer, progress: 20 },
-  ];
-
-  const displayedDevices = isExpanded ? allDevices : allDevices.slice(0, 2);
+  const displayedDevices = isExpanded ? devices : devices.slice(0, 5);
 
   return (
     <div className="space-y-4">
@@ -21,7 +20,7 @@ const EquipmentTable = () => {
         <h3 className="font-black text-slate-800 uppercase text-[10px] md:text-xs tracking-[0.15em]">
           Active Equipment Status
         </h3>
-        <button 
+        <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center gap-1 text-orange-500 text-[10px] font-[1000] uppercase tracking-widest hover:text-orange-600 transition-all"
         >
@@ -33,10 +32,8 @@ const EquipmentTable = () => {
         </button>
       </div>
 
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-        
+      <SurfaceCard className="overflow-hidden">
         <div className="overflow-x-auto">
-          
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -46,15 +43,30 @@ const EquipmentTable = () => {
                 <th className="px-6 py-4">Activity</th>
               </tr>
             </thead>
-            
+
             <tbody className="divide-y divide-slate-50">
-              {displayedDevices.map((device, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                  
+              {loading && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                    Loading equipment...
+                  </td>
+                </tr>
+              )}
+
+              {!loading && displayedDevices.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                    No equipment found.
+                  </td>
+                </tr>
+              )}
+
+              {!loading && displayedDevices.map((device) => (
+                <tr key={device.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-slate-100 rounded-lg text-slate-500 shrink-0">
-                        <device.icon size={18} />
+                        <Cpu size={18} />
                       </div>
                       <span className="font-bold text-slate-700 text-sm whitespace-nowrap">
                         {device.name}
@@ -68,9 +80,7 @@ const EquipmentTable = () => {
 
                   <td className="px-6 py-4">
                     <span className={`text-[10px] font-black px-2 py-1 rounded-md whitespace-nowrap ${
-                      device.status === 'IN USE' 
-                        ? 'bg-green-50 text-green-600' 
-                        : 'bg-slate-100 text-slate-400'
+                      statusStyles[device.status] || 'bg-slate-100 text-slate-400'
                     }`}>
                       {device.status}
                     </span>
@@ -80,26 +90,25 @@ const EquipmentTable = () => {
                     {device.progress > 0 ? (
                       <div className="flex items-center gap-3">
                         <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
-                          <div 
-                            className="h-full bg-orange-400 rounded-full transition-all duration-500" 
-                            style={{ width: `${device.progress}%` }} 
+                          <div
+                            className="h-full bg-orange-400 rounded-full transition-all duration-500"
+                            style={{ width: `${device.progress}%` }}
                           />
                         </div>
                         <span className="text-[10px] font-bold text-slate-400">{device.progress}%</span>
                       </div>
                     ) : (
                       <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-                        Ready
+                        {device.status === 'OFFLINE' ? 'Offline' : 'Ready'}
                       </span>
                     )}
                   </td>
-
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      </SurfaceCard>
     </div>
   );
 };

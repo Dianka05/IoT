@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../../api/auth"; 
+import { login } from "../../api/auth";
+import { useAuth } from "../../auth/AuthContext";
+import { getDefaultRouteForRole } from "../../auth/roles";
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const { refreshAuth } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +26,8 @@ export default function LoginForm() {
 
       if (result.success) {
         alert("Login successful!");
-        navigate("/dashboard"); 
+        const currentUser = await refreshAuth();
+        navigate(getDefaultRouteForRole(currentUser?.profile?.role));
       } else {
         alert(result.error?.message || "Login failed");
       }

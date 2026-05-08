@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import SidebarEquipment from "../components/AdminSidebar";
+import LoadingScreen from "../components/loadingScreen";
+import PageShell from "../components/pageShell";
+import StatusBanner from "../components/statusBanner";
 import HeaderEquipment from "../components/Equipment/HeaderEquipment";
 import ListEquipment from "../components/Equipment/ListEquipment";
 import ReminderEquipment from "../components/Equipment/ReminderEquipment";
-import { getCurrentUser, getDevices } from "../api/equipment";
+import { getDevices } from "../api/equipment";
+import { useAuth } from "../auth/AuthContext";
 
 function getDeviceId(device) {
   return device.deviceId || device.id;
@@ -39,9 +42,8 @@ function mapDeviceForEquipment(device, currentUser) {
 }
 
 const Equipment = () => {
+  const { profile, loading: authLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const [currentUser, setCurrentUser] = useState(null);
   const [devices, setDevices] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -52,12 +54,7 @@ const Equipment = () => {
     setError("");
 
     try {
-      const [me, devicesList] = await Promise.all([
-        getCurrentUser(),
-        getDevices(100),
-      ]);
-
-      setCurrentUser(me?.profile || null);
+      const devicesList = await getDevices(100);
       setDevices(devicesList);
     } catch (err) {
       console.error("Failed to load equipment:", err);
@@ -68,13 +65,15 @@ const Equipment = () => {
   };
 
   useEffect(() => {
-    loadEquipment();
-  }, []);
+    if (!authLoading) {
+      loadEquipment();
+    }
+  }, [authLoading]);
 
   const currentUserDevices = useMemo(() => {
-    if (!currentUser) return [];
+    if (!profile) return [];
 
-    const allowedDeviceIds = new Set(currentUser.allowedDeviceIds || []);
+    const allowedDeviceIds = new Set(profile.allowedDeviceIds || []);
 
     return devices
       .filter((device) => {
@@ -86,17 +85,19 @@ const Equipment = () => {
           allowedDeviceIds.has(device.deviceId)
         );
       })
-      .map((device) => mapDeviceForEquipment(device, currentUser));
-  }, [currentUser, devices]);
+      .map((device) => mapDeviceForEquipment(device, profile));
+  }, [profile, devices]);
+
+  if (authLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
-    <div className="h-screen flex bg-[#f8fafc] overflow-hidden">
-      <SidebarEquipment
-        isOpen={sidebarOpen}
-        setIsOpen={setSidebarOpen}
-      />
-
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+    <PageShell
+      sidebarOpen={sidebarOpen}
+      setSidebarOpen={setSidebarOpen}
+      mainClassName="flex-1 overflow-y-auto p-6 md:p-8"
+    >
         <HeaderEquipment
           title="My Equipment"
           setSidebarOpen={setSidebarOpen}
@@ -110,21 +111,21 @@ const Equipment = () => {
           <p className="text-sm text-slate-500 mt-1">
             Devices assigned to{" "}
             <span className="font-semibold text-slate-700">
-              {currentUser?.name || currentUser?.email || "current user"}
+              {profile?.name || profile?.email || "current user"}
             </span>
           </p>
         </div>
 
         {loading && (
-          <div className="mb-6 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600">
+          <StatusBanner className="mb-6">
             Loading equipment...
-          </div>
+          </StatusBanner>
         )}
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          <StatusBanner tone="error" className="mb-6">
             {error}
-          </div>
+          </StatusBanner>
         )}
 
         {!loading && !error && (
@@ -135,8 +136,7 @@ const Equipment = () => {
         )}
 
         <ReminderEquipment />
-      </main>
-    </div>
+    </PageShell>
   );
 };
 

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 
-import Sidebar from '../components/AdminSidebar';
+import LoadingScreen from '../components/loadingScreen';
+import PageShell from '../components/pageShell';
+import StatusBanner from '../components/statusBanner';
 import UsersListHeader from '../components/UsersList/UsersListHeader';
 import UserStatsCards from '../components/UsersList/UserStatsCards';
 import UserTabs from '../components/UsersList/UserTabs';
@@ -11,8 +14,11 @@ import {
   getDevices,
   deleteUser,
 } from '../api/users';
+import { canManageUsers, getDefaultRouteForRole } from "../auth/roles";
+import { useAuth } from "../auth/AuthContext";
 
 export default function UsersList() {
+  const { role, loading: authLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("All Users");
 
@@ -44,8 +50,10 @@ export default function UsersList() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!authLoading && canManageUsers(role)) {
+      loadData();
+    }
+  }, [authLoading, role]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -63,12 +71,21 @@ export default function UsersList() {
     );
   };
 
-  return (
-    <div className="flex min-h-screen h-screen bg-[#f8fafc] overflow-hidden">
-      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+  if (authLoading) {
+    return <LoadingScreen />;
+  }
 
-      <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
-        <div className="max-w-[1400px] mx-auto space-y-6">
+  if (!canManageUsers(role)) {
+    return <Navigate to={getDefaultRouteForRole(role)} replace />;
+  }
+
+  return (
+    <PageShell
+      sidebarOpen={sidebarOpen}
+      setSidebarOpen={setSidebarOpen}
+      mainClassName="flex-1 overflow-x-hidden p-4 md:p-8"
+      contentClassName="max-w-[1400px] mx-auto space-y-6"
+    >
           <UsersListHeader
             setSidebarOpen={setSidebarOpen}
             onRefresh={handleRefresh}
@@ -86,9 +103,9 @@ export default function UsersList() {
           />
 
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            <StatusBanner tone="error">
               {error}
-            </div>
+            </StatusBanner>
           )}
 
           <UserTable
@@ -98,8 +115,6 @@ export default function UsersList() {
             loading={loading}
             onDeleteUser={handleDeleteUser}
           />
-        </div>
-      </main>
-    </div>
+    </PageShell>
   );
 }
