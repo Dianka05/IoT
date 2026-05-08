@@ -1,11 +1,23 @@
 import { Users, Edit, Trash2 } from "lucide-react";
 
-const UserRow = ({ name, role, rfid, equipment, limit, status, onDelete }) => {
+const UserRow = ({
+  name,
+  role,
+  rfid,
+  equipment = [],
+  limit,
+  status,
+  onDelete,
+}) => {
   const roleColors = {
     Admin: "bg-blue-100 text-blue-700",
     Technician: "bg-orange-100 text-orange-700",
     User: "bg-slate-200 text-slate-700",
   };
+
+  const equipmentText = equipment.length > 0
+    ? equipment.join(", ")
+    : "No equipment";
 
   return (
     <tr className="hover:bg-slate-50/50 transition-all cursor-pointer">
@@ -13,7 +25,10 @@ const UserRow = ({ name, role, rfid, equipment, limit, status, onDelete }) => {
         <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
           <Users size={18} />
         </div>
-        <span className="font-bold text-slate-700 text-[15px]">{name}</span>
+
+        <span className="font-bold text-slate-700 text-[15px]">
+          {name}
+        </span>
       </td>
 
       <td className="px-6 py-4">
@@ -29,15 +44,15 @@ const UserRow = ({ name, role, rfid, equipment, limit, status, onDelete }) => {
       </td>
 
       <td className="px-6 py-4 text-[14px] text-slate-600 font-medium">
-        {rfid}
+        {rfid || "—"}
+      </td>
+
+      <td className="px-6 py-4 text-[14px] text-slate-600 font-medium max-w-[300px] truncate">
+        {equipmentText}
       </td>
 
       <td className="px-6 py-4 text-[14px] text-slate-600 font-medium">
-        {equipment.join(", ")}
-      </td>
-
-      <td className="px-6 py-4 text-[14px] text-slate-600 font-medium">
-        {limit}
+        {limit || "Default"}
       </td>
 
       <td className="px-6 py-4">

@@ -87,24 +87,24 @@ const options = {
     './src/modules/**/*.js'
   ]
 };
+app.use(cookieParser())
 
 const swaggerSpec = swaggerJsdoc(options);
 console.log('PATHS:', Object.keys(swaggerSpec.paths || {}))
-app.use('/api', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.use(fanRoutes)
-app.use(mainBoxRoutes)
+app.use('/api', fanRoutes)
+app.use('/api', mainBoxRoutes)
 
-app.use(sessionRoutes)
-app.use(userRoutes)
+app.use('/api', sessionRoutes)
+app.use('/api', userRoutes)
 
-app.use(logsRoutes)
+app.use('/api', logsRoutes)
 
-app.use(activitiesRoutes)
+app.use('/api', activitiesRoutes)
 
 
-app.use(cookieParser())
-app.use(authRoutes)
+app.use('/api', authRoutes)
 
 /**
  * @swagger
@@ -136,9 +136,9 @@ app.get('/health', (req, res, next) => {
   })
 })
 
-app.listen(process.env.PORT || 3000, () => {
+app.listen(process.env.PORT || 3001, () => {
   logDebug(
-    'HTTP server running on http://localhost:' + (process.env.PORT || 3000),
+    'HTTP server running on http://localhost:' + (process.env.PORT || 3001),
   )
 })
 
