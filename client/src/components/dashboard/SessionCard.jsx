@@ -1,9 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { CreditCard } from 'lucide-react';
+import SurfaceCard from '../surfaceCard';
 
-const SessionCard = ({ id, technician }) => {
-  const [secondsLeft, setSecondsLeft] = useState(15900);
+const RFID_TONE_CLASSES = {
+  default: 'bg-slate-100 text-slate-500',
+  muted: 'bg-slate-100 text-slate-400',
+  danger: 'bg-red-50 text-red-500',
+};
+
+const SessionCard = ({
+  title,
+  subtitle,
+  rfid = 'No card yet',
+  rfidTone = 'default',
+  initialSecondsLeft = 0,
+  showTimer = false,
+}) => {
+  const [secondsLeft, setSecondsLeft] = useState(initialSecondsLeft);
 
   useEffect(() => {
+    setSecondsLeft(initialSecondsLeft);
+  }, [initialSecondsLeft]);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) {
+      return undefined;
+    }
+
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 0) {
@@ -15,7 +38,7 @@ const SessionCard = ({ id, technician }) => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [secondsLeft]);
 
   const formatTime = (totalSeconds) => {
     const hrs = Math.floor(totalSeconds / 3600);
@@ -28,32 +51,39 @@ const SessionCard = ({ id, technician }) => {
   };
 
   return (
-    <section className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+    <SurfaceCard
+      as="section"
+      className="flex flex-col items-center justify-between gap-6 p-8 md:flex-row"
+    >
       <div className="flex items-center gap-6">
         <div className="w-20 h-20 bg-orange-50 rounded-2xl flex items-center justify-center border border-orange-100">
-          <div className="w-10 h-12 border-2 border-orange-400 rounded-md flex flex-col items-center pt-2 relative">
-            <div className="w-4 h-4 bg-orange-400 rounded-full mb-1" />
-            <div className="w-6 h-1 bg-orange-400 rounded-full" />
-          </div>
+          <CreditCard size={34} className="text-orange-400" />
         </div>
-        <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tighter">{id}</h2>
-          <p className="text-slate-400 font-bold text-sm">{technician}</p>
-          <div className="mt-2 inline-flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-lg text-[10px] font-mono font-bold text-slate-500 uppercase">
-             88 - 34 - EF - 90
+        <div className='flex flex-col items-start gap-1.5'>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tighter">{title}</h2>
+          <p className="text-slate-400 font-bold text-sm">{subtitle}</p>
+          <div
+            className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-lg text-[10px] font-mono font-bold uppercase ${
+              RFID_TONE_CLASSES[rfidTone] || RFID_TONE_CLASSES.default
+            }`}
+          >
+            <CreditCard size={12} />
+            {rfid}
           </div>
         </div>
       </div>
 
-      <div className="bg-orange-50/50 border border-orange-100 rounded-[24px] px-10 py-6 text-center min-w-[260px]">
-        <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] mb-1">
-          Remaining Session Time
-        </p>
-        <div className="text-5xl font-mono font-black text-orange-500 tracking-widest">
-          {formatTime(secondsLeft)}
+      {showTimer && (
+        <div className="bg-orange-50/50 border border-orange-100 rounded-[24px] px-10 py-6 text-center min-w-[260px]">
+          <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] mb-1">
+            Remaining Session Time
+          </p>
+          <div className="text-5xl font-mono font-black text-orange-500 tracking-widest">
+            {formatTime(secondsLeft)}
+          </div>
         </div>
-      </div>
-    </section>
+      )}
+    </SurfaceCard>
   );
 };
 

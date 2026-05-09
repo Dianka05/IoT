@@ -1,4 +1,4 @@
-import StatCard from "./StatCard";
+import StatCard from "../statCard";
 import { Users, Activity, CreditCard, Monitor } from "lucide-react";
 
 const UserStatsCards = ({ users = [], devices = [] }) => {
