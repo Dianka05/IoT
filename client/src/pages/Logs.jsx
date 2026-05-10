@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import LoadingScreen from "../components/loadingScreen";
+import PageHeader from "../components/pageHeader";
 import PageShell from "../components/pageShell";
-import Header from "../components/Logs/Header";
 import Filters from "../components/Logs/Filters";
 import LogsTable, { logsData } from "../components/Logs/LogsTable";
 import Pagination from "../components/Logs/Pagination";
@@ -61,7 +61,12 @@ export default function Logs() {
       setSidebarOpen={setSidebarOpen}
       mainClassName="flex-1 overflow-y-auto p-6 md:p-8"
     >
-        <Header setSidebarOpen={setSidebarOpen} onRefresh={handleRefresh} />
+        <PageHeader
+          title="System Security Logs"
+          subtitle="Real-time monitoring of IoT equipment activities and access attempts."
+          setSidebarOpen={setSidebarOpen}
+          onRefresh={handleRefresh}
+        />
 
         <div key={refreshKey}>
           <Filters onFilter={handleFilter} onRefresh={handleRefresh} />

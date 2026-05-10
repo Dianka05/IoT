@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { UserPlus } from "lucide-react";
 
 import LoadingScreen from '../components/loadingScreen';
+import PageHeader from '../components/pageHeader';
 import PageShell from '../components/pageShell';
 import StatusBanner from '../components/statusBanner';
-import UsersListHeader from '../components/UsersList/UsersListHeader';
 import UserStatsCards from '../components/UsersList/UserStatsCards';
 import UserTabs from '../components/UsersList/UserTabs';
 import UserTable from '../components/UsersList/UserTable';
@@ -86,10 +87,20 @@ export default function UsersList() {
       mainClassName="flex-1 overflow-x-hidden p-4 md:p-8"
       contentClassName="max-w-[1400px] mx-auto space-y-6"
     >
-          <UsersListHeader
+          <PageHeader
+            title="System Users"
+            subtitle="Manage and control access for all registered system users."
             setSidebarOpen={setSidebarOpen}
             onRefresh={handleRefresh}
             refreshing={refreshing}
+            action={(
+              <button
+                className="flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 font-semibold text-white transition hover:bg-orange-600"
+              >
+                <UserPlus size={20} />
+                Add New User
+              </button>
+            )}
           />
 
           <UserStatsCards

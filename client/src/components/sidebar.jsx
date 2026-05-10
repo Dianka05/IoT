@@ -44,7 +44,7 @@ function NavButton({ to, icon, label }) {
     <NavLink
       to={to}
       className={({ isActive }) => `
-        flex items-center justify-between px-4 py-4 rounded-2xl transition-all duration-200 group
+        flex items-center justify-between px-4 py-4 rounded-lg transition-all duration-200 group
         ${isActive
           ? 'bg-orange-50 text-orange-600 shadow-sm'
           : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}

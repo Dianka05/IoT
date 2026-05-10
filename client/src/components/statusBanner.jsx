@@ -7,7 +7,7 @@ export default function StatusBanner({ tone = 'neutral', className = '', childre
   const toneClasses = TONE_CLASSES[tone] || TONE_CLASSES.neutral;
 
   return (
-    <div className={`rounded-xl border px-4 py-3 text-sm font-semibold ${toneClasses} ${className}`.trim()}>
+    <div className={`rounded-lg border px-4 py-3 text-sm font-semibold ${toneClasses} ${className}`.trim()}>
       {children}
     </div>
   );
