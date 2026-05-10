@@ -1,6 +1,6 @@
 import { request, unwrapData } from './request'
 import { getUsers } from './users'
-import { getDevices } from './equipment'
+import { getBoxes, getDevices } from './equipment'
 
 export async function getSessions(limit = 100, status) {
   const query = new URLSearchParams()
@@ -28,13 +28,6 @@ export async function endSession(sessionId, reason = 'manual') {
 
 export async function getLogs(limit = 20) {
   const payload = await request(`/logs?limit=${limit}`)
-  const data = unwrapData(payload)
-
-  return data?.items || []
-}
-
-export async function getBoxes(limit = 100) {
-  const payload = await request(`/boxes?limit=${limit}`)
   const data = unwrapData(payload)
 
   return data?.items || []

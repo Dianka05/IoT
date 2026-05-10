@@ -1,11 +1,17 @@
 import { Thermometer, Droplets } from 'lucide-react';
+import SurfaceCard from '../surfaceCard';
 
-const StatCard = ({ label, value, unit, limit, trend, status, type }) => {
+const StatCard = ({ label, value, unit, limit, trend, status, type, trendTone = "neutral" }) => {
   const isWarning = status === "WARNING";
   const Icon = type === "temp" ? Thermometer : Droplets;
+  const trendClass = trendTone === "warning"
+    ? "text-orange-500"
+    : trendTone === "positive"
+      ? "text-green-500"
+      : "text-slate-400";
 
   return (
-    <div className={`bg-white rounded-[24px] p-6 md:p-8 border-l-4 shadow-sm relative overflow-hidden ${isWarning ? 'border-yellow-400' : 'border-green-500'}`}>
+    <SurfaceCard className={`bg-white rounded-xl p-6 md:p-8 border-l-4 shadow-sm relative overflow-hidden ${isWarning ? 'border-yellow-400' : 'border-green-500'}`}>
       <div className="flex justify-between items-start mb-6 md:mb-10">
         <div className={`p-2.5 md:p-3 rounded-xl ${isWarning ? 'bg-yellow-50 text-yellow-600' : 'bg-green-50 text-green-600'}`}>
           <Icon size={24} className="md:w-7 md:h-7" />
@@ -24,11 +30,11 @@ const StatCard = ({ label, value, unit, limit, trend, status, type }) => {
 
       <div className="mt-8 md:mt-10 pt-5 md:pt-6 border-t border-slate-50 flex justify-between items-center text-[10px] md:text-[11px] font-bold uppercase tracking-wider">
         <span className="text-slate-400">Limit: {limit}</span>
-        <span className={trend.startsWith('+') ? 'text-orange-500' : 'text-green-500'}>
+        <span className={trendClass}>
            {trend}
         </span>
       </div>
-    </div>
+    </SurfaceCard>
   );
 };
 
