@@ -1,4 +1,5 @@
 import { Box, Cpu, MapPin, Pencil, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import SurfaceCard from "../surfaceCard";
 
 function getBoxId(box) {
@@ -104,7 +105,7 @@ function DeviceRow({ device, onEdit }) {
   const status = normalizeStatus(device.status, device.active);
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-4 md:flex-row md:items-center md:justify-between">
+    <SurfaceCard className="flex justify-between flex-col gap-3 border-slate-100 bg-slate-50/70 px-4 py-4 md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-3">
         <div className="rounded-xl bg-white p-3 text-slate-500 shadow-sm">
           <Cpu size={18} />
@@ -128,13 +129,13 @@ function DeviceRow({ device, onEdit }) {
         <button
           type="button"
           onClick={() => onEdit?.(device)}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
         >
           <Pencil size={14} />
           Edit
         </button>
       </div>
-    </div>
+    </SurfaceCard>
   );
 }
 
@@ -143,7 +144,7 @@ function BoxCard({ box, onEditBox, onAddDevice, onEditDevice }) {
   const deviceCount = box.devices.length;
 
   return (
-    <SurfaceCard className="rounded-[28px] p-6 shadow-sm">
+    <SurfaceCard className="p-6">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
@@ -174,6 +175,14 @@ function BoxCard({ box, onEditBox, onAddDevice, onEditDevice }) {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <Link
+              to={`/environment-dashboard?boxId=${encodeURIComponent(box.boxId)}`}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              <MapPin size={16} />
+              Open Dashboard
+            </Link>
+
             <button
               type="button"
               onClick={() => onAddDevice?.(box.boxId)}
@@ -227,7 +236,7 @@ export default function EquipmentOperationsView({
 
   if (!loading && groups.length === 0 && unassignedDevices.length === 0) {
     return (
-      <SurfaceCard className="rounded-[28px] p-10 text-center shadow-sm">
+      <SurfaceCard className="p-10 text-center">
         <div className="mx-auto flex max-w-lg flex-col items-center">
           <div className="rounded-3xl bg-orange-50 p-5 text-orange-500">
             <Box size={28} />
@@ -278,7 +287,7 @@ export default function EquipmentOperationsView({
       ))}
 
       {unassignedDevices.length > 0 && (
-        <SurfaceCard className="rounded-[28px] p-6 shadow-sm">
+        <SurfaceCard className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-xl font-black text-slate-800">

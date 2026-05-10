@@ -1,26 +1,33 @@
-const SystemIdentity = () => {
-  const info = [
-    { label: 'Box Model', value: 'BOBABAB V11' },
-    { label: 'Firmware', value: 'v2.4.0-build.88' },
-    { label: 'Connection', value: '5G CONNECTED', status: 'active' },
-  ];
+import SurfaceCard from "../surfaceCard";
 
+export default function SystemIdentity({ info = [] }) {
   return (
-    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-slate-50">
-      <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest mb-6">System Identity</h3>
+    <SurfaceCard className="p-4">
+      <h3 className="mb-6 text-xs font-black uppercase tracking-widest text-slate-800">
+        System Identity
+      </h3>
+
       <div className="space-y-4">
-        {info.map((item, i) => (
-          <div key={i} className="flex justify-between items-center text-[11px] font-bold">
-            <span className="text-slate-300 uppercase tracking-tight">{item.label}</span>
-            <span className={`uppercase ${item.status === 'active' ? 'text-green-500 flex items-center gap-2' : 'text-slate-800'}`}>
-              {item.status === 'active' && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>}
+        {info.length === 0 && (
+          <div className="text-[11px] font-bold text-slate-400">
+            No identity data available yet.
+          </div>
+        )}
+
+        {info.map((item, index) => (
+          <div key={`${item.label}-${index}`} className="flex items-center justify-between text-[11px] font-bold">
+            <span className="uppercase tracking-tight text-slate-300">
+              {item.label}
+            </span>
+            <span className={`uppercase ${item.status === "active" ? "flex items-center gap-2 text-green-500" : "text-slate-800"}`}>
+              {item.status === "active" && (
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              )}
               {item.value}
             </span>
           </div>
         ))}
       </div>
-    </div>
+    </SurfaceCard>
   );
-};
-
-export default SystemIdentity;
+}

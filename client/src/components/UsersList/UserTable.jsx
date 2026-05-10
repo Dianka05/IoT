@@ -195,14 +195,14 @@ export default function UserTable({
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="rounded-lg bg-slate-100 px-4 py-2 text-slate-600 transition hover:bg-slate-200"
+                className="rounded-lg cursor-pointer bg-slate-100 px-4 py-2 text-slate-600 transition hover:bg-slate-200"
               >
                 Cancel
               </button>
 
               <button
                 onClick={handleDelete}
-                className="rounded-lg bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
+                className="rounded-lg cursor-pointer bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
               >
                 Delete
               </button>
