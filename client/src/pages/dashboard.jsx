@@ -9,20 +9,19 @@ import {
   Fingerprint,
   LogIn,
   LogOut,
-  Menu,
   ShieldCheck,
   UserPlus,
   Users,
   Wrench,
 } from 'lucide-react';
 import LoadingScreen from '../components/loadingScreen';
+import PageHeader from '../components/pageHeader';
 import PageShell from '../components/pageShell';
 import StatusBanner from '../components/statusBanner';
 import StatusBadge from '../components/dashboard/StatusBadge';
 import SessionCard from '../components/dashboard/SessionCard';
 import ActivityLog from '../components/dashboard/ActivityLog';
 import StatCard from '../components/statCard';
-import AdminDashboardHeader from "../components/adminDashboard/AdminDashboardHeader";
 import EquipmentTable from '../components/adminDashboard/EquipmentTable';
 import LiveActivity from '../components/adminDashboard/LiveActivity';
 import { getDevices } from '../api/equipment';
@@ -35,23 +34,29 @@ import {
   getCurrentUserDisplayName,
   getCurrentUserSessions,
 } from '../utils/currentUser';
+import SurfaceCard from "../components/surfaceCard";
 
 const ACTIVE_SESSION_STATUSES = new Set(['pending', 'active']);
 const ALERT_TYPES = new Set(['auth_denied', 'mqtt_handler_error']);
 
-const QuickActionBtn = ({ icon: Icon, label, to }) => (
-  <Link
-    to={to}
-    className="flex-1 bg-white border border-slate-100 p-6 rounded-xl flex flex-col items-center gap-3 hover:bg-slate-50 transition-all group shadow-sm active:scale-95"
-  >
-    <div className="p-3 rounded-xl group-hover:scale-110 transition-transform">
-      <Icon size={24} className="text-slate-600" />
-    </div>
-    <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest text-center">
-      {label}
-    </span>
-  </Link>
-);
+const QuickActionBtn = ({ icon, label, to }) => {
+  const Icon = icon;
+
+  return (
+    <SurfaceCard className="flex-1 p-6 hover:bg-slate-100 transition-all group shadow-sm hover:scale-99">
+      <Link
+        to={to}
+        className="flex flex-col items-center justify-center gap-4"
+      >
+        <Icon size={24} className="text-slate-600" />
+
+        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest text-center">
+          {label}
+        </span>
+      </Link>
+    </SurfaceCard>
+  );
+};
 
 function toMillis(timestamp) {
   if (!timestamp) return null;
@@ -380,7 +385,8 @@ const Dashboard = () => {
           userName: profile?.name || profile?.email || 'Current User',
         }}
       >
-            <AdminDashboardHeader
+            <PageHeader
+              title="System Overview"
               setSidebarOpen={setSidebarOpen}
               subtitle={
                 role === 'technician'
@@ -389,6 +395,7 @@ const Dashboard = () => {
               }
               onRefresh={() => loadDashboard(true)}
               refreshing={refreshing}
+              className="mb-10"
             />
 
             <div className="mb-6">
@@ -482,29 +489,19 @@ const Dashboard = () => {
       shellClassName="flex min-h-screen bg-[#f8fafc]"
       mainClassName="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10"
     >
-          <header className="flex flex-col gap-6 sm:flex-row sm:justify-between sm:items-center mb-10">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2.5 bg-white border border-slate-100 rounded-xl shadow-sm text-slate-600 active:scale-95 transition-transform"
-              >
-                <Menu size={24} />
-              </button>
-
-              <div>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-[1000] text-[#0f172a] tracking-tight uppercase leading-tight">
-                  System Overview
-                </h1>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                  {profile?.name || profile?.email || 'User access'} | personal workspace
-                </p>
+          <PageHeader
+            title="System Overview"
+            subtitle={`${profile?.name || profile?.email || 'User access'} | personal workspace`}
+            setSidebarOpen={setSidebarOpen}
+            className="mb-10"
+            action={(
+              <div className="w-fit">
+                <StatusBadge
+                  isOnline={!!currentUserActiveSession || dashboardDevices.length > 0}
+                />
               </div>
-            </div>
-
-            <div className="w-fit">
-              <StatusBadge isOnline={!!currentUserActiveSession || dashboardDevices.length > 0} />
-            </div>
-          </header>
+            )}
+          />
 
           {error && (
             <StatusBanner tone="error" className="mb-6">

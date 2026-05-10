@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingScreen from "../components/loadingScreen";
+import PageHeader from "../components/pageHeader";
 import PageShell from "../components/pageShell";
 import StatusBanner from "../components/statusBanner";
-import HeaderEquipment from "../components/Equipment/HeaderEquipment";
 import ListEquipment from "../components/Equipment/ListEquipment";
 import ReminderEquipment from "../components/Equipment/ReminderEquipment";
 import { getDevices } from "../api/equipment";
@@ -98,8 +98,9 @@ const Equipment = () => {
       setSidebarOpen={setSidebarOpen}
       mainClassName="flex-1 overflow-y-auto p-6 md:p-8"
     >
-        <HeaderEquipment
+        <PageHeader
           title="My Equipment"
+          subtitle="Configure and manage access permissions for IoT equipment."
           setSidebarOpen={setSidebarOpen}
         />
 

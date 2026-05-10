@@ -2,7 +2,7 @@ import SurfaceCard from './surfaceCard';
 
 export default function StatCard({ icon: Icon, label, value, trend, status, iconBg }) {
   return (
-    <SurfaceCard className="flex h-36 flex-col justify-between rounded-xl p-4 md:h-40 md:p-6">
+    <SurfaceCard className="flex h-36 flex-col justify-between p-4 md:h-40 md:p-6">
       <div className="flex items-start justify-between">
         <div className={`rounded-xl p-2.5 md:p-3 ${iconBg}`}>
           <Icon size={18} className="text-slate-700 md:size-5" />

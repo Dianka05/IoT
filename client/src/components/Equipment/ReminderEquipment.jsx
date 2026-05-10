@@ -1,23 +1,17 @@
 import { Info } from "lucide-react";
+import SurfaceCard from "../surfaceCard";
 
 export default function ReminderEquipment() {
   return (
-    <div
+    <SurfaceCard
       className="
-        mt-8 p-5 rounded-xl border border-slate-200 shadow-sm
-        bg-[#fdf7ee]   /* мягкий бежевый фон */
+        mt-8 p-5 border border-[#ec5b131a] shadow-sm
+        bg-[#ec5b130d]
         flex items-start gap-4
       "
     >
-      <div
-        className="
-          h-8 w-8 rounded-full bg-white border border-slate-300
-          flex items-center justify-center
-          text-slate-600
-        "
-      >
-        <Info size={18} />
-      </div>
+      
+      <Info size={18} color="#FF8C00" />
 
       <div className="flex flex-col">
         <p className="font-semibold text-slate-900 text-sm">
@@ -27,6 +21,6 @@ export default function ReminderEquipment() {
           Every “Approve” is logged with timestamps and user IDs.
         </p>
       </div>
-    </div>
+    </SurfaceCard>
   );
 }

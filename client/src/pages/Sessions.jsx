@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 
 import LoadingScreen from "../components/loadingScreen";
+import PageHeader from "../components/pageHeader";
 import PageShell from "../components/pageShell";
-import SessionsHeader from "../components/Sessions/SessionsHeader";
 import SessionsStats from "../components/Sessions/SessionsStats";
 import SessionsTable from "../components/Sessions/SessionsTable";
 import SessionsPagination from "../components/Sessions/SessionsPagination";
@@ -302,7 +302,11 @@ export default function Sessions() {
       sidebarOpen={sidebarOpen}
       setSidebarOpen={setSidebarOpen}
     >
-          <SessionsHeader setSidebarOpen={setSidebarOpen} />
+          <PageHeader
+            title="Sessions"
+            subtitle="Monitor and manage all active hardware access sessions."
+            setSidebarOpen={setSidebarOpen}
+          />
 
           <div className="space-y-10">
 
