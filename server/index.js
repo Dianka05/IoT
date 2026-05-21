@@ -15,6 +15,7 @@ const userRoutes = require('./src/modules/users/users.routes')
 const logsRoutes = require('./src/modules/logs/logs.routes')
 const authRoutes = require('./src/modules/auth/auth.routes')
 const activitiesRoutes = require('./src/modules/activities/activities.routes')
+const organizationsRoutes = require('./src/modules/organizations/organizations.routes')
 
 const cookieParser = require('cookie-parser')
 
@@ -47,6 +48,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 app.options(/.*/, cors(corsOptions))
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+}))
 app.use(express.json())
 
 setConfig({
@@ -92,6 +97,8 @@ const swaggerSpec = swaggerJsdoc(options);
 console.log('PATHS:', Object.keys(swaggerSpec.paths || {}))
 app.use('/api', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+app.use(cookieParser())
+
 app.use(fanRoutes)
 app.use(mainBoxRoutes)
 
@@ -102,8 +109,8 @@ app.use(logsRoutes)
 
 app.use(activitiesRoutes)
 
+app.use(organizationsRoutes)
 
-app.use(cookieParser())
 app.use(authRoutes)
 
 /**

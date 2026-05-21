@@ -53,6 +53,14 @@ const router = express.Router()
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/auth/register', async (req, res, next) => {
+  
+  if (process.env.ALLOW_PUBLIC_REGISTRATION !== 'true') {
+  return res.status(403).json({
+    success: false,
+    message: 'Public registration is disabled. Ask admin to create a user.',
+  })
+}
+
   try {
     const { email, password, name } = req.body || {}
 

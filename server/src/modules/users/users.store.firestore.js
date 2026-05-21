@@ -125,6 +125,19 @@ async function deleteUserById(userId) {
   return true
 }
 
+async function listUsersByOrganization(organizationId, limit = 50) {
+  const snapshot = await db
+    .collection('users')
+    .where('organizationId', '==', organizationId)
+    .limit(limit)
+    .get()
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }))
+}
+
 module.exports = {
   upsertUser,
   listUsers,
@@ -135,4 +148,5 @@ module.exports = {
   updateUserById,
   updateAllowedDeviceIds,
   deleteUserById,
+  listUsersByOrganization
 }
