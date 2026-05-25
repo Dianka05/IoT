@@ -34,7 +34,7 @@ const configuredOrigins = [
 ].filter(Boolean)
 const allowedOrigins = [...new Set([
   'http://localhost:5173',
-  'https://iot-hrtzvsdpt-dianas-projects-a89f9e8a.vercel.app',
+  'https://iot-pink.vercel.app',
   ...configuredOrigins,
 ])]
 const corsOptions = {

@@ -1,7 +1,12 @@
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+const RAW_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+export const API_URL = String(RAW_API_URL).replace(/\/+$/, '')
 
 export async function request(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
+  const normalizedPath = String(path || '').startsWith('/')
+    ? String(path)
+    : `/${String(path || '')}`
+
+  const response = await fetch(`${API_URL}${normalizedPath}`, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
