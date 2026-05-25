@@ -178,20 +178,6 @@ function BoxCard({ box, onEditBox, onAddDevice, onEditDevice }) {
     connectivity.wifi === null ? null : `WiFi ${connectivity.wifi ? "On" : "Off"}`,
     connectivity.mqtt === null ? null : `MQTT ${connectivity.mqtt ? "On" : "Off"}`,
   ].filter(Boolean).join(" | ");
-  const occupancyStatus = String(box?.occupancy?.status || "").toLowerCase();
-  const occupancyUserName = box?.occupancy?.userName || box?.occupancy?.userId || "";
-  const occupancyLabel = occupancyUserName
-    ? occupancyStatus === "active"
-      ? `Active session by ${occupancyUserName}`
-      : occupancyStatus === "pending"
-        ? `Reserved by ${occupancyUserName}`
-        : ""
-    : occupancyStatus === "active"
-      ? "Active session in this box"
-      : occupancyStatus === "pending"
-        ? "Reservation pending in this box"
-        : "";
-
   return (
     <SurfaceCard className="p-6">
       <div className="flex flex-col gap-5">
@@ -218,11 +204,6 @@ function BoxCard({ box, onEditBox, onAddDevice, onEditDevice }) {
               {telemetry && (
                 <p className="mt-2 text-[11px] font-medium text-slate-400">
                   {telemetry}
-                </p>
-              )}
-              {occupancyLabel && (
-                <p className="mt-2 text-[11px] font-semibold text-orange-600">
-                  {occupancyLabel}
                 </p>
               )}
 

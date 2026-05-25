@@ -3,6 +3,7 @@ const {
   upsertUser,
   listUsers,
   listUsersByOrganization,
+  getUserByCardUid,
   getUserByActiveCardUid,
   getUserByAuthUid,
   getUserById,
@@ -303,6 +304,29 @@ async function findActiveUserByUidForOrganization(uid, organizationId) {
   if (normalized.active !== true) return null
 
   return normalized
+}
+
+async function findUserCardAccessForOrganization(uid, organizationId) {
+  const user = await getUserByCardUid(uid)
+  if (!user) return null
+
+  const normalized = normalizeUserProfile(user, organizationId)
+  if (!normalized.currentMembership) {
+    return null
+  }
+
+  const normalizedUid = String(uid || '')
+    .replace(/[^a-fA-F0-9]/g, '')
+    .toUpperCase()
+  const card = normalizeCards(user.cards).find((item) => item.uid === normalizedUid)
+  if (!card) {
+    return null
+  }
+
+  return {
+    user: normalized,
+    card,
+  }
 }
 
 async function findUserByAuthUid(authUid) {
@@ -678,6 +702,7 @@ module.exports = {
   findUserByUid,
   findActiveUserByUid,
   findActiveUserByUidForOrganization,
+  findUserCardAccessForOrganization,
   findUserByAuthUid,
   ensureAuthUserProfile,
   clearMustChangePassword,

@@ -137,15 +137,8 @@ function applyManualStatusPatch(current, patch = {}) {
 
 async function getBoxesForOrganization(organizationId, limit = 50) {
   const items = await listBoxesByOrganization(organizationId, limit)
-  const occupancy = await buildOccupancyMaps(organizationId)
 
-  return items.map((item) => {
-    const boxId = item.boxId || item.id
-    return applyConnectivityFreshness({
-      ...item,
-      occupancy: occupancy.byBoxId.get(boxId) || null,
-    })
-  })
+  return items.map((item) => applyConnectivityFreshness(item))
 }
 
 async function getBoxes(limit = 50) {
@@ -157,11 +150,7 @@ async function getBox(boxId) {
   const item = await getBoxById(boxId)
   if (!item) return null
 
-  const occupancy = await buildOccupancyMaps(item.organizationId)
-  return applyConnectivityFreshness({
-    ...item,
-    occupancy: occupancy.byBoxId.get(boxId) || null,
-  })
+  return applyConnectivityFreshness(item)
 }
 
 async function patchBox(userProfile, boxId, patch) {

@@ -1,4 +1,5 @@
-import { UserPlus, Radio, AlertCircle, Share2, ShieldAlert, LogIn, LogOut } from 'lucide-react';
+import { UserPlus, Radio, AlertCircle, Share2, ShieldAlert, LogIn, LogOut, ChevronDown } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import SurfaceCard from '../surfaceCard';
 
 const ActivityItem = ({ icon: Icon, title, desc, time, color }) => (
@@ -27,9 +28,17 @@ function getMeta(type) {
     case 'auth_granted':
       return { icon: LogIn, title: 'Session Started', color: 'bg-green-500' };
     case 'session_ended':
+    case 'session_ended_auto':
+    case 'session_ended_manual':
+    case 'session_force_ended':
       return { icon: LogOut, title: 'Session Ended', color: 'bg-slate-400' };
     case 'auth_denied':
       return { icon: ShieldAlert, title: 'Access Denied', color: 'bg-red-500' };
+    case 'blocked_card_attempt':
+      return { icon: ShieldAlert, title: 'Blocked Card Used', color: 'bg-red-500' };
+    case 'suspicious_presence':
+    case 'suspicious_presence_after_denied':
+      return { icon: AlertCircle, title: 'Suspicious Presence', color: 'bg-red-500' };
     case 'user_created':
       return { icon: UserPlus, title: 'New User', color: 'bg-slate-400' };
     case 'device_online':
@@ -41,8 +50,19 @@ function getMeta(type) {
   }
 }
 
-const LiveActivity = ({ items = defaultItems }) => (
+const LiveActivity = ({ items = defaultItems, viewAllHref = '' }) => (
   <SurfaceCard className="p-6">
+    {viewAllHref && (
+      <div className="mb-5 flex justify-end">
+        <Link
+          to={viewAllHref}
+          className="flex items-center gap-1 text-[10px] font-[1000] uppercase tracking-widest text-orange-500 transition-all hover:text-orange-600"
+        >
+          <ChevronDown size={14} />
+          View All
+        </Link>
+      </div>
+    )}
     <div className="space-y-6">
       {items.length === 0 && (
         <p className="text-sm text-slate-400">No recent activity yet.</p>

@@ -38,7 +38,13 @@ import SurfaceCard from "../components/surfaceCard";
 import { getDisplayStatus } from "../utils/equipmentStatus";
 
 const ACTIVE_SESSION_STATUSES = new Set(['pending', 'active']);
-const ALERT_TYPES = new Set(['auth_denied', 'mqtt_handler_error']);
+const ALERT_TYPES = new Set([
+  'auth_denied',
+  'blocked_card_attempt',
+  'suspicious_presence',
+  'suspicious_presence_after_denied',
+  'mqtt_handler_error',
+]);
 
 const QuickActionBtn = ({ icon, label, to }) => {
   const Icon = icon;
@@ -199,9 +205,10 @@ function buildLiveActivity(logs) {
   return logs.slice(0, 8).map((log) => {
     let description = log.message || 'System event received';
 
-    if (log.userId || log.uid || log.boxId) {
+    if (log.userName || log.userId || log.uid || log.boxId) {
       const parts = [];
-      if (log.userId) parts.push(`User ${log.userId}`);
+      if (log.userName) parts.push(log.userName);
+      else if (log.userId) parts.push(`User ${log.userId}`);
       if (log.uid) parts.push(`RFID ${log.uid}`);
       if (log.boxId) parts.push(`at ${log.boxId}`);
       description = parts.join(' ');
@@ -490,7 +497,7 @@ const Dashboard = () => {
                 </section>
 
                 <section>
-                  <EquipmentTable devices={deviceRows} loading={loading} />
+                  <EquipmentTable devices={deviceRows} loading={loading} viewAllHref="/equipment" />
                 </section>
               </div>
 
@@ -500,7 +507,7 @@ const Dashboard = () => {
                     Live Activity Log
                   </h3>
                 </div>
-                <LiveActivity items={liveActivity} />
+                <LiveActivity items={liveActivity} viewAllHref="/logs" />
               </div>
             </div>
       </PageShell>

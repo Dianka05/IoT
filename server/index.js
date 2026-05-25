@@ -32,7 +32,18 @@ try {
 }
 
 const app = express()
-const allowedOrigins = ['http://localhost:5173']
+const configuredOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  ...(process.env.CLIENT_URLS
+    ? process.env.CLIENT_URLS.split(',').map((value) => value.trim())
+    : []),
+].filter(Boolean)
+const allowedOrigins = [...new Set([
+  'http://localhost:5173',
+  'https://iot-hrtzvsdpt-dianas-projects-a89f9e8a.vercel.app',
+  ...configuredOrigins,
+])]
 const corsOptions = {
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {

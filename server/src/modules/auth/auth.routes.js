@@ -14,6 +14,17 @@ const { sendSuccessResponse } = require('../../responses/default.response')
 
 const router = express.Router()
 
+function getCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: COOKIE_MAX_AGE_MS,
+  }
+}
+
 /**
  * @swagger
  * /auth/register:
@@ -69,12 +80,7 @@ router.post('/auth/register', async (req, res, next) => {
     const result = await registerUser({ email, password, name })
     const sessionCookie = await createSessionCookie(result.idToken)
 
-    res.cookie(COOKIE_NAME, sessionCookie, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: COOKIE_MAX_AGE_MS,
-    })
+    res.cookie(COOKIE_NAME, sessionCookie, getCookieOptions())
 
     sendSuccessResponse(res, {
         item: {
@@ -129,12 +135,7 @@ router.post('/auth/login', async (req, res, next) => {
     const result = await loginUser({ email, password })
     const sessionCookie = await createSessionCookie(result.idToken)
 
-    res.cookie(COOKIE_NAME, sessionCookie, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: COOKIE_MAX_AGE_MS,
-    })
+    res.cookie(COOKIE_NAME, sessionCookie, getCookieOptions())
 
     sendSuccessResponse(res, {
       item: {
