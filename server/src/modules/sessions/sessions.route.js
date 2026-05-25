@@ -101,6 +101,15 @@ router.post('/sessions', requireAuth, requireUserProfile, requireOrganizationCon
 
 router.post('/sessions/:sessionId/start', requireAuth, requireUserProfile, requireOrganizationContext, async (req, res, next) => {
   try {
+    const existing = await getSessionByIdForProfile(
+      req.userProfile,
+      req.params.sessionId
+    )
+
+    if (!existing) {
+      return next(Errors.NotFound('Session not found'))
+    }
+
     const item = await startSessionById(req.params.sessionId)
 
     if (!item || item.organizationId !== req.userProfile.currentOrganizationId) {
@@ -119,6 +128,15 @@ router.post('/sessions/:sessionId/end', requireAuth, requireUserProfile, require
 
     if (reason !== undefined && typeof reason !== 'string') {
       return next(Errors.BadRequest('`reason` must be a string'))
+    }
+
+    const existing = await getSessionByIdForProfile(
+      req.userProfile,
+      req.params.sessionId
+    )
+
+    if (!existing) {
+      return next(Errors.NotFound('Session not found'))
     }
 
     const item = await endSessionById(req.params.sessionId, reason || 'manual')

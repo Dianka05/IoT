@@ -90,3 +90,13 @@ export function getPreferredCardUid(profile) {
 
   return formatCardUid(activeCard?.uid || cards[0]?.uid)
 }
+
+export function getActiveCardUid(profile) {
+  const cards = Array.isArray(profile?.cards) ? profile.cards : []
+
+  const activeCard = cards.find(
+    (card) => String(card?.status || '').toLowerCase() === 'active' && card?.uid
+  )
+
+  return activeCard?.uid || ''
+}

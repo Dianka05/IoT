@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Plus } from "lucide-react";
 
 import LoadingScreen from "../components/loadingScreen";
 import PageHeader from "../components/pageHeader";
@@ -8,9 +8,13 @@ import StatusBanner from "../components/statusBanner";
 import SessionsStats from "../components/Sessions/SessionsStats";
 import SessionsTable from "../components/Sessions/SessionsTable";
 import SessionsPagination from "../components/Sessions/SessionsPagination";
-import { endSession, getSessions } from "../api/dashboard";
-import { canUseOperationsDashboard, getDefaultRouteForRole } from "../auth/roles";
+import SessionReservationModal from "../components/Sessions/SessionReservationModal";
+import { createSession, endSession, getSessions } from "../api/dashboard";
+import { getBoxes, getDevices } from "../api/equipment";
+import { canUseOperationsDashboard } from "../auth/roles";
 import { useAuth } from "../auth/AuthContext";
+import { getActiveCardUid } from "../utils/currentUser";
+import { getDisplayStatus } from "../utils/equipmentStatus";
 
 function toMillis(timestamp) {
   if (!timestamp) return null;
@@ -41,7 +45,7 @@ function formatRole(value) {
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
-function mapSessionRow(session, nowMs) {
+function mapSessionRow(session, nowMs, deviceNameMap) {
   const status = String(session.status || "").toLowerCase();
   const durationSec = Number(session.sessionDurationSec || 0);
   const startedAtMs = toMillis(session.startedAt || session.createdAt);
@@ -69,7 +73,7 @@ function mapSessionRow(session, nowMs) {
     userRole: formatRole(session.role),
     hardwareLabel:
       Array.isArray(session.deviceIds) && session.deviceIds.length > 0
-        ? session.deviceIds.join(", ")
+        ? session.deviceIds.map((deviceId) => deviceNameMap.get(deviceId) || deviceId).join(", ")
         : "No devices",
     boxLabel: session.boxId || "No box",
     mode: String(session.mode || "manual").toUpperCase(),
@@ -82,13 +86,18 @@ function mapSessionRow(session, nowMs) {
 }
 
 export default function Sessions() {
-  const { role, loading: authLoading, currentOrganizationId } = useAuth();
+  const { role, profile, loading: authLoading, currentOrganizationId } = useAuth();
+  const isOperationsRole = canUseOperationsDashboard(role);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [sessions, setSessions] = useState([]);
+  const [boxes, setBoxes] = useState([]);
+  const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [terminatingId, setTerminatingId] = useState("");
+  const [submittingReservation, setSubmittingReservation] = useState(false);
+  const [reservationModalOpen, setReservationModalOpen] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
 
   const perPage = 6;
@@ -104,8 +113,14 @@ export default function Sessions() {
     setError("");
 
     try {
-      const items = await getSessions(200);
+      const [items, boxesList, devicesList] = await Promise.all([
+        getSessions(200),
+        getBoxes(200),
+        getDevices(200),
+      ]);
       setSessions(items);
+      setBoxes(boxesList);
+      setDevices(devicesList);
       setPage(1);
     } catch (err) {
       console.error("Failed to load sessions:", err);
@@ -144,9 +159,67 @@ export default function Sessions() {
     }
   };
 
+  const activeCardUid = useMemo(() => getActiveCardUid(profile), [profile]);
+  const allowedDeviceIds = useMemo(
+    () => new Set((profile?.allowedDeviceIds || []).map((value) => String(value))),
+    [profile]
+  );
+  const reservableDevices = useMemo(
+    () =>
+      devices.filter((device) => {
+        const deviceId = String(device.deviceId || device.id || "");
+        const status = getDisplayStatus(device);
+
+        if (!deviceId || !allowedDeviceIds.has(deviceId)) {
+          return false;
+        }
+
+        if (device.active === false) {
+          return false;
+        }
+
+        return status !== "maintenance" && status !== "offline" && status !== "busy" && status !== "reserved" && status !== "in_use";
+      }),
+    [devices, allowedDeviceIds]
+  );
+  const reservableBoxIds = useMemo(
+    () => new Set(reservableDevices.map((device) => String(device.boxId || "")).filter(Boolean)),
+    [reservableDevices]
+  );
+  const reservableBoxes = useMemo(
+    () => boxes.filter((box) => reservableBoxIds.has(String(box.boxId || box.id || ""))),
+    [boxes, reservableBoxIds]
+  );
+  const deviceNameMap = useMemo(() => {
+    const map = new Map();
+    devices.forEach((device) => {
+      const deviceId = device.deviceId || device.id;
+      if (deviceId) {
+        map.set(deviceId, device.name || deviceId);
+      }
+    });
+    return map;
+  }, [devices]);
+
+  const handleCreateReservation = async (payload) => {
+    setSubmittingReservation(true);
+    setError("");
+
+    try {
+      await createSession(payload);
+      setReservationModalOpen(false);
+      await loadSessionsData();
+    } catch (err) {
+      console.error("Failed to create reservation:", err);
+      setError(err.message || "Failed to create reservation");
+    } finally {
+      setSubmittingReservation(false);
+    }
+  };
+
   const sessionsState = useMemo(
-    () => sessions.map((session) => mapSessionRow(session, nowMs)),
-    [sessions, nowMs]
+    () => sessions.map((session) => mapSessionRow(session, nowMs, deviceNameMap)),
+    [sessions, nowMs, deviceNameMap]
   );
   const totalItems = sessionsState.length;
   const start = (page - 1) * perPage;
@@ -160,24 +233,42 @@ export default function Sessions() {
     return <LoadingScreen />;
   }
 
-  if (!canUseOperationsDashboard(role)) {
-    return <Navigate to={getDefaultRouteForRole(role)} replace />;
-  }
-
   return (
+    <>
     <PageShell sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
       <PageHeader
-        title="Sessions"
-        subtitle="Monitor and manage all active hardware access sessions."
+        title={isOperationsRole ? "Sessions" : "My Sessions"}
+        subtitle={
+          isOperationsRole
+            ? "Monitor workspace sessions and create reservations with your own RFID card."
+            : "Manage your own reservations and active hardware access sessions."
+        }
         setSidebarOpen={setSidebarOpen}
         onRefresh={loadSessionsData}
         refreshing={loading && sessions.length > 0}
+        action={(
+          <button
+            type="button"
+            onClick={() => setReservationModalOpen(true)}
+            disabled={!activeCardUid || reservableBoxes.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus size={16} />
+            Create Reservation
+          </button>
+        )}
       />
 
       <div className="space-y-10">
         {error && (
           <StatusBanner tone="error">
             {error}
+          </StatusBanner>
+        )}
+
+        {!activeCardUid && (
+          <StatusBanner className="border-amber-200 bg-amber-50 text-amber-700">
+            You need at least one active RFID card to create a reservation.
           </StatusBanner>
         )}
 
@@ -190,6 +281,7 @@ export default function Sessions() {
         <SessionsStats
           liveSessions={liveSessions}
           totalSessions={totalItems}
+          isOperationsRole={isOperationsRole}
         />
 
         <section>
@@ -207,5 +299,16 @@ export default function Sessions() {
         </section>
       </div>
     </PageShell>
+    <SessionReservationModal
+      open={reservationModalOpen}
+      boxes={reservableBoxes}
+      devices={reservableDevices}
+      defaultDurationSec={profile?.sessionDurationSec || 1800}
+      activeCardUid={activeCardUid}
+      submitting={submittingReservation}
+      onClose={() => setReservationModalOpen(false)}
+      onSubmit={handleCreateReservation}
+    />
+    </>
   );
 }

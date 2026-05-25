@@ -1,6 +1,10 @@
 import { CalendarDays, Radio } from "lucide-react";
 
-export default function SessionsStats({ liveSessions = 0, totalSessions = 0 }) {
+export default function SessionsStats({
+  liveSessions = 0,
+  totalSessions = 0,
+  isOperationsRole = false,
+}) {
   return (
     <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -10,7 +14,9 @@ export default function SessionsStats({ liveSessions = 0, totalSessions = 0 }) {
           </p>
           <p className="mt-1 text-4xl font-black text-slate-800">{liveSessions}</p>
           <p className="mt-1 text-xs font-medium text-green-600">
-            Active and pending in current workspace
+            {isOperationsRole
+              ? "Active and pending in current workspace"
+              : "Your active and pending reservations"}
           </p>
         </div>
 
@@ -26,7 +32,9 @@ export default function SessionsStats({ liveSessions = 0, totalSessions = 0 }) {
           </p>
           <p className="mt-1 text-4xl font-black text-slate-800">{totalSessions}</p>
           <p className="mt-1 text-xs font-medium text-slate-500">
-            Sessions returned for current organization
+            {isOperationsRole
+              ? "Sessions returned for current organization"
+              : "Sessions returned for your account"}
           </p>
         </div>
 

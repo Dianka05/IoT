@@ -291,7 +291,9 @@ const Dashboard = () => {
 
     try {
       if (isOperationsRole) {
-        const adminOverview = await getAdminOverview();
+        const adminOverview = await getAdminOverview({
+          includeUsers: canManageUsers(role),
+        });
         setOverview(adminOverview);
       } else {
         const [devicesList, sessionsList] = await Promise.all([
@@ -439,13 +441,15 @@ const Dashboard = () => {
                     status="Live"
                     iconBg="bg-orange-50"
                   />
-                  <StatCard
-                    icon={Users}
-                    label="Registered Users"
-                    value={loading ? '...' : overview.users.length}
-                    status={loading ? '...' : `${stats.activeUsers} active`}
-                    iconBg="bg-blue-50"
-                  />
+                  {canManageUsers(role) && (
+                    <StatCard
+                      icon={Users}
+                      label="Registered Users"
+                      value={loading ? '...' : overview.users.length}
+                      status={loading ? '...' : `${stats.activeUsers} active`}
+                      iconBg="bg-blue-50"
+                    />
+                  )}
                   <StatCard
                     icon={Box}
                     label="Equipment Units"
@@ -532,6 +536,12 @@ const Dashboard = () => {
 
           <div className="max-w-5xl space-y-6 md:space-y-8">
             <SessionCard {...currentUserCardData} />
+            <section>
+              <div className="flex flex-wrap gap-4">
+                <QuickActionBtn icon={Clock} label="My Sessions" to="/sessions" />
+                <QuickActionBtn icon={Box} label="My Equipment" to="/equipment" />
+              </div>
+            </section>
             <ActivityLog items={activityItems} />
           </div>
     </PageShell>

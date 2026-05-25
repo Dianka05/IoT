@@ -29,6 +29,10 @@ const emptyModalState = {
   initialValues: null,
 };
 
+function normalizeStringArray(values) {
+  return [...new Set((Array.isArray(values) ? values : []).map((value) => String(value)))].sort();
+}
+
 function normalizeCardsFromForm(values) {
   const cards = Array.isArray(values.cards) ? values.cards : [];
 
@@ -38,6 +42,17 @@ function normalizeCardsFromForm(values) {
       status: String(card?.status || "active").toLowerCase(),
     }))
     .filter((card) => card.uid);
+}
+
+function areSameCards(left, right) {
+  const normalizedLeft = normalizeCardsFromForm({ cards: left })
+    .map((card) => `${card.uid}:${card.status}`)
+    .sort();
+  const normalizedRight = normalizeCardsFromForm({ cards: right })
+    .map((card) => `${card.uid}:${card.status}`)
+    .sort();
+
+  return JSON.stringify(normalizedLeft) === JSON.stringify(normalizedRight);
 }
 
 function normalizeSessionDuration(value) {
@@ -140,24 +155,24 @@ export default function UsersList() {
 
     try {
       const cards = normalizeCardsFromForm(values);
-      const payload = {
-        name: String(values.name || "").trim(),
-        email: String(values.email || "").trim(),
-        role: values.role || "user",
-        active: values.active !== false,
-        sessionDurationSec: normalizeSessionDuration(values.sessionDurationSec),
-      };
-
-      if (!payload.name) {
-        throw new Error("Name is required");
-      }
-
-      if (!payload.email) {
-        throw new Error("Email is required");
-      }
 
       if (modalState.mode === "create") {
+        const payload = {
+          name: String(values.name || "").trim(),
+          email: String(values.email || "").trim(),
+          role: values.role || "user",
+          active: values.active !== false,
+          sessionDurationSec: normalizeSessionDuration(values.sessionDurationSec),
+        };
         const password = String(values.password || "").trim();
+
+        if (!payload.name) {
+          throw new Error("Name is required");
+        }
+
+        if (!payload.email) {
+          throw new Error("Email is required");
+        }
 
         if (!password) {
           throw new Error("Temporary password is required");
@@ -174,10 +189,52 @@ export default function UsersList() {
           modalState.initialValues?.id ||
           modalState.initialValues?.userId ||
           modalState.initialValues?.authUid;
+        const existingUser = modalState.initialValues || {};
+        const fallbackName = String(existingUser.name || "").trim();
+        const fallbackEmail = String(existingUser.email || "").trim();
+        const nextName = String(values.name || "").trim() || fallbackName;
+        const nextEmail = String(values.email || "").trim() || fallbackEmail;
+        const nextRole = values.role || existingUser.role || "user";
+        const nextActive = values.active !== false;
+        const nextSessionDuration = normalizeSessionDuration(
+          values.sessionDurationSec ?? existingUser.sessionDurationSec
+        );
+        const globalPatch = {};
 
-        await updateUser(userId, payload);
-        await updateUserCards(userId, cards);
-        await updateUserAllowedDeviceIds(userId, values.allowedDeviceIds || []);
+        if (nextName && nextName !== String(existingUser.name || "").trim()) {
+          globalPatch.name = nextName;
+        }
+
+        if (nextEmail && nextEmail !== String(existingUser.email || "").trim()) {
+          globalPatch.email = nextEmail;
+        }
+
+        if (nextRole !== (existingUser.role || "user")) {
+          globalPatch.role = nextRole;
+        }
+
+        if (nextActive !== (existingUser.active !== false)) {
+          globalPatch.active = nextActive;
+        }
+
+        if (nextSessionDuration !== normalizeSessionDuration(existingUser.sessionDurationSec)) {
+          globalPatch.sessionDurationSec = nextSessionDuration;
+        }
+
+        if (Object.keys(globalPatch).length > 0) {
+          await updateUser(userId, globalPatch);
+        }
+
+        if (!areSameCards(cards, existingUser.cards || [])) {
+          await updateUserCards(userId, cards);
+        }
+
+        const nextAllowedDeviceIds = normalizeStringArray(values.allowedDeviceIds || []);
+        const existingAllowedDeviceIds = normalizeStringArray(existingUser.allowedDeviceIds || []);
+
+        if (JSON.stringify(nextAllowedDeviceIds) !== JSON.stringify(existingAllowedDeviceIds)) {
+          await updateUserAllowedDeviceIds(userId, nextAllowedDeviceIds);
+        }
       }
 
       setModalState(emptyModalState);

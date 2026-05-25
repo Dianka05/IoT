@@ -120,14 +120,14 @@ export default function UserEntityModal({
     }));
   };
 
-  const addAllowedDevice = () => {
-    if (!devicePicker) return;
+  const addAllowedDevice = (nextDeviceId = devicePicker) => {
+    if (!nextDeviceId) return;
 
     setForm((prev) => ({
       ...prev,
-      allowedDeviceIds: prev.allowedDeviceIds.includes(devicePicker)
+      allowedDeviceIds: prev.allowedDeviceIds.includes(nextDeviceId)
         ? prev.allowedDeviceIds
-        : [...prev.allowedDeviceIds, devicePicker],
+        : [...prev.allowedDeviceIds, nextDeviceId],
     }));
     setDevicePicker("");
   };
@@ -161,6 +161,22 @@ export default function UserEntityModal({
     setNewCardStatus("active");
   };
 
+  const buildCardsForSubmit = () => {
+    const pendingUid = String(newCardUid || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
+
+    if (!pendingUid) {
+      return form.cards;
+    }
+
+    return normalizeCards([
+      ...form.cards,
+      {
+        uid: pendingUid,
+        status: newCardStatus,
+      },
+    ]);
+  };
+
   const updateCard = (uid, patch) => {
     setForm((prev) => ({
       ...prev,
@@ -184,7 +200,10 @@ export default function UserEntityModal({
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    onSubmit?.(form);
+    onSubmit?.({
+      ...form,
+      cards: buildCardsForSubmit(),
+    });
   };
 
   const handleDelete = () => {
@@ -352,6 +371,12 @@ export default function UserEntityModal({
                             event.target.value.replace(/[^a-fA-F0-9]/g, "").toUpperCase()
                           )
                         }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            addCard();
+                          }
+                        }}
                         placeholder="A27A7B38"
                       />
                     </div>
@@ -409,7 +434,13 @@ export default function UserEntityModal({
                   <div className="flex flex-wrap items-center gap-2">
                     <select
                       value={devicePicker}
-                      onChange={(event) => setDevicePicker(event.target.value)}
+                      onChange={(event) => {
+                        const nextDeviceId = event.target.value;
+                        setDevicePicker(nextDeviceId);
+                        if (nextDeviceId) {
+                          addAllowedDevice(nextDeviceId);
+                        }
+                      }}
                       className="rounded-full border border-dashed border-orange-300 bg-white px-3 py-1.5 text-sm text-slate-600 outline-none transition focus:border-orange-400"
                     >
                       <option value="">Select device</option>
@@ -431,13 +462,14 @@ export default function UserEntityModal({
                         })}
                     </select>
 
-                    <button
-                      type="button"
-                      onClick={addAllowedDevice}
-                      className="rounded-full border border-dashed border-orange-300 px-3 py-1.5 text-sm font-semibold text-orange-500 transition hover:border-orange-400 hover:bg-orange-50"
-                    >
-                      + Add Device
-                    </button>
+                    {sortedDevices.filter(
+                      (device) =>
+                        !form.allowedDeviceIds.includes(device.deviceId || device.id)
+                    ).length === 0 && (
+                      <span className="text-sm font-medium text-slate-400">
+                        All devices already assigned
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

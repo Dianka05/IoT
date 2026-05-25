@@ -25,6 +25,7 @@ function getNavItems(role) {
     return [
       { to: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'Dashboard' },
       { to: '/equipment', icon: <Monitor size={22} />, label: 'My Equipment' },
+      { to: '/sessions', icon: <Clock size={22} />, label: 'My Sessions' },
     ];
   }
 
