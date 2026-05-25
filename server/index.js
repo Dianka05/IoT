@@ -24,13 +24,6 @@ const client = require('./src/mqtt/client')
 const { initMqtt } = require('./src/mqtt/init')
 
 
-try {
-  initMqtt()
-} catch (error) {
-  logDebug('Error occurred while initializing MQTT: ' + error.message)
-    console.log("ss")
-}
-
 const app = express()
 const configuredOrigins = [
   process.env.CLIENT_URL,
@@ -60,10 +53,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 app.options(/.*/, cors(corsOptions))
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
-}))
 app.use(express.json())
 
 setConfig({
@@ -149,17 +138,41 @@ app.use('/api', authRoutes)
  *                   type: boolean
  *                   example: true
  */
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    service: 'iot-backend',
+    mqttConnected: client.connected,
+    mqttDisabled: client.disabled === true,
+  })
+})
+
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end()
+})
+
 app.get('/health', (req, res, next) => {
   res.json({
     success: client.connected,
     mqttConnected: client.connected,
+    mqttDisabled: client.disabled === true,
   })
 })
 
-app.listen(process.env.PORT || 3001, () => {
-  logDebug(
-    'HTTP server running on http://localhost:' + (process.env.PORT || 3001),
-  )
-})
-
 app.use(errorHandler)
+
+try {
+  initMqtt()
+} catch (error) {
+  logDebug('Error occurred while initializing MQTT: ' + error.message)
+}
+
+if (require.main === module) {
+  app.listen(process.env.PORT || 3001, () => {
+    logDebug(
+      'HTTP server running on http://localhost:' + (process.env.PORT || 3001),
+    )
+  })
+}
+
+module.exports = app
