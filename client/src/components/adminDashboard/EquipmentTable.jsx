@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Cpu, ChevronDown, ChevronUp } from 'lucide-react';
 import SurfaceCard from '../surfaceCard';
 
@@ -11,7 +12,7 @@ const statusStyles = {
   OFFLINE: 'bg-red-50 text-red-600',
 };
 
-const EquipmentTable = ({ devices = [], loading = false }) => {
+const EquipmentTable = ({ devices = [], loading = false, viewAllHref = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const displayedDevices = isExpanded ? devices : devices.slice(0, 5);
 
@@ -21,16 +22,26 @@ const EquipmentTable = ({ devices = [], loading = false }) => {
         <h3 className="font-black text-slate-800 uppercase text-[10px] md:text-xs tracking-[0.15em]">
           Active Equipment Status
         </h3>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1 text-orange-500 text-[10px] font-[1000] uppercase tracking-widest hover:text-orange-600 transition-all"
-        >
-          {isExpanded ? (
-            <><ChevronUp size={14} /> Show Less</>
-          ) : (
-            <><ChevronDown size={14} /> View All</>
-          )}
-        </button>
+        {viewAllHref ? (
+          <Link
+            to={viewAllHref}
+            className="flex items-center gap-1 text-orange-500 text-[10px] font-[1000] uppercase tracking-widest hover:text-orange-600 transition-all"
+          >
+            <ChevronDown size={14} />
+            View All
+          </Link>
+        ) : (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1 text-orange-500 text-[10px] font-[1000] uppercase tracking-widest hover:text-orange-600 transition-all"
+          >
+            {isExpanded ? (
+              <><ChevronUp size={14} /> Show Less</>
+            ) : (
+              <><ChevronDown size={14} /> View All</>
+            )}
+          </button>
+        )}
       </div>
 
       <SurfaceCard className="overflow-hidden">

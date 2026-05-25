@@ -10,6 +10,7 @@ const {
 } = require('../logs/logs.service')
 const {
   findActiveUserByUidForOrganization,
+  findUserCardAccessForOrganization,
 } = require('../users/users.service')
 const { getBoxById } = require('../boxes/main-box/boxes.store.firestore')
 const { getDeviceById } = require('../devices/fan-1/devices.store.firestore')
@@ -25,24 +26,92 @@ function normalizeEntityStatus(entity = {}) {
 async function handleAuthRequest(msg) {
   const { uid, boxId } = msg.payload
   const box = await getBoxById(boxId)
+  const cardAccess = box?.organizationId
+    ? await findUserCardAccessForOrganization(uid, box.organizationId)
+    : null
+
+  if (!cardAccess) {
+    await logAuthDenied({ uid, boxId }, 'uid_not_recognized')
+
+    return publishAuthResult(boxId, {
+      uid,
+      allowed: false,
+      reason: 'uid_not_recognized',
+    })
+  }
+
+  const { user: recognizedUser, card } = cardAccess
+
+  if (card.status === 'blocked') {
+    await logAuthDenied(
+      {
+        uid,
+        boxId,
+        userId: recognizedUser.userId,
+        userName: recognizedUser.name,
+      },
+      'blocked_card'
+    )
+
+    return publishAuthResult(boxId, {
+      uid,
+      allowed: false,
+      reason: 'blocked_card',
+    })
+  }
+
+  if (card.status !== 'active') {
+    const reason = `card_status_${card.status}`
+    await logAuthDenied(
+      {
+        uid,
+        boxId,
+        userId: recognizedUser.userId,
+        userName: recognizedUser.name,
+      },
+      reason
+    )
+
+    return publishAuthResult(boxId, {
+      uid,
+      allowed: false,
+      reason,
+    })
+  }
 
   const user = box?.organizationId
     ? await findActiveUserByUidForOrganization(uid, box.organizationId)
     : null
 
   if (!user) {
-    await logAuthDenied({ uid, boxId }, 'UID not recognized or user inactive')
+    await logAuthDenied(
+      {
+        uid,
+        boxId,
+        userId: recognizedUser.userId,
+        userName: recognizedUser.name,
+      },
+      'user_inactive'
+    )
 
     return publishAuthResult(boxId, {
       uid,
       allowed: false,
-      reason: 'UID not recognized or user inactive',
+      reason: 'user_inactive',
     })
   }
 
   const session = await store.findPendingSessionForAuth(uid, boxId)
   if (!session) {
-    await logAuthDenied({ uid, boxId }, 'no_pending_session')
+    await logAuthDenied(
+      {
+        uid,
+        boxId,
+        userId: user.userId,
+        userName: user.name,
+      },
+      'no_pending_session'
+    )
 
     return publishAuthResult(boxId, {
       uid,

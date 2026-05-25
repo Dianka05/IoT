@@ -109,6 +109,8 @@ function applyConnectivityFreshness(entity = {}, nowMs = Date.now()) {
       connectivity: {
         ...snapshot,
         online: false,
+        wifi: false,
+        mqtt: false,
       },
     }
   }
@@ -131,6 +133,8 @@ function applyConnectivityFreshness(entity = {}, nowMs = Date.now()) {
     connectivity: {
       ...snapshot,
       online: false,
+      wifi: false,
+      mqtt: false,
     },
   }
 }

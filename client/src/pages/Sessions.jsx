@@ -132,7 +132,7 @@ export default function Sessions() {
   }, [currentOrganizationId]);
 
   useEffect(() => {
-    if (!authLoading && canUseOperationsDashboard(role)) {
+    if (!authLoading) {
       loadSessionsData();
     }
   }, [authLoading, role, loadSessionsData]);
@@ -165,11 +165,22 @@ export default function Sessions() {
     () => new Set((profile?.allowedDeviceIds || []).map((value) => String(value))),
     [profile]
   );
+  const boxStatusMap = useMemo(() => {
+    const map = new Map();
+    boxes.forEach((box) => {
+      const boxId = String(box.boxId || box.id || "");
+      if (boxId) {
+        map.set(boxId, getDisplayStatus(box));
+      }
+    });
+    return map;
+  }, [boxes]);
   const reservableDevices = useMemo(
     () =>
       devices.filter((device) => {
         const deviceId = String(device.deviceId || device.id || "");
         const status = getDisplayStatus(device);
+        const boxStatus = boxStatusMap.get(String(device.boxId || "")) || "";
 
         if (!deviceId || !allowedDeviceIds.has(deviceId)) {
           return false;
@@ -179,9 +190,13 @@ export default function Sessions() {
           return false;
         }
 
+        if (boxStatus === "maintenance" || boxStatus === "offline") {
+          return false;
+        }
+
         return status !== "maintenance" && status !== "offline" && status !== "busy" && status !== "reserved" && status !== "in_use";
       }),
-    [devices, allowedDeviceIds]
+    [devices, allowedDeviceIds, boxStatusMap]
   );
   const reservableBoxIds = useMemo(
     () => new Set(reservableDevices.map((device) => String(device.boxId || "")).filter(Boolean)),

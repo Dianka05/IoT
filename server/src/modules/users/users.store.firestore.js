@@ -7,6 +7,12 @@ function mapDoc(doc) {
   }
 }
 
+function normalizeUid(uid) {
+  return String(uid || '')
+    .replace(/[^a-fA-F0-9]/g, '')
+    .toUpperCase()
+}
+
 async function upsertUser(user) {
   const userId = user.userId
   const docRef = db.collection('users').doc(userId)
@@ -27,13 +33,28 @@ async function upsertUser(user) {
 }
 
 async function getUserByActiveCardUid(uid) {
+  const normalizedUid = normalizeUid(uid)
   const snapshot = await db.collection('users').limit(100).get()
 
   const item = snapshot.docs
     .map(mapDoc)
     .find((user) =>
       Array.isArray(user.cards) &&
-      user.cards.some((card) => card.uid === uid && card.status === 'active')
+      user.cards.some((card) => normalizeUid(card.uid) === normalizedUid && card.status === 'active')
+    )
+
+  return item || null
+}
+
+async function getUserByCardUid(uid) {
+  const normalizedUid = normalizeUid(uid)
+  const snapshot = await db.collection('users').limit(200).get()
+
+  const item = snapshot.docs
+    .map(mapDoc)
+    .find((user) =>
+      Array.isArray(user.cards) &&
+      user.cards.some((card) => normalizeUid(card.uid) === normalizedUid)
     )
 
   return item || null
@@ -106,6 +127,7 @@ module.exports = {
   upsertUser,
   listUsers,
   listUsersByOrganization,
+  getUserByCardUid,
   getUserByActiveCardUid,
   getUserByAuthUid,
   getUserById,

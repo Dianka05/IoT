@@ -211,6 +211,65 @@ function buildMetricRows(boxActivity, deviceActivities, devicesById) {
   return statusItems;
 }
 
+function buildEffectiveStatusRows(box, relatedDevices) {
+  const rows = [];
+
+  if (box) {
+    const snapshot = getConnectivitySnapshot(box);
+    const boxStatus = getDisplayStatus(box);
+
+    rows.push({
+      name: "Box | Effective Status",
+      value: startCaseLabel(boxStatus),
+      status: boxStatus === "maintenance" ? "warning" : boxStatus === "offline" ? "error" : "normal",
+      time: formatRelativeTime(snapshot.lastSeenAt),
+      path: "effective.status",
+      rawValue: boxStatus,
+    });
+    rows.push({
+      name: "Box | WiFi",
+      value: snapshot.wifi === null ? "Unknown" : snapshot.wifi ? "Connected" : "Offline",
+      status: snapshot.wifi === false ? "error" : "normal",
+      time: formatRelativeTime(snapshot.lastSeenAt),
+      path: "effective.wifi",
+      rawValue: snapshot.wifi,
+    });
+    rows.push({
+      name: "Box | MQTT",
+      value: snapshot.mqtt === null ? "Unknown" : snapshot.mqtt ? "Connected" : "Offline",
+      status: snapshot.mqtt === false ? "error" : "normal",
+      time: formatRelativeTime(snapshot.lastSeenAt),
+      path: "effective.mqtt",
+      rawValue: snapshot.mqtt,
+    });
+    rows.push({
+      name: "Box | Online",
+      value: snapshot.online === null ? "Unknown" : snapshot.online ? "Yes" : "No",
+      status: snapshot.online === false ? "error" : "normal",
+      time: formatRelativeTime(snapshot.lastSeenAt),
+      path: "effective.online",
+      rawValue: snapshot.online,
+    });
+  }
+
+  relatedDevices.slice(0, 8).forEach((device) => {
+    const snapshot = getConnectivitySnapshot(device);
+    const status = getDisplayStatus(device);
+    const label = device.name || getDeviceId(device);
+
+    rows.push({
+      name: `${label} | Effective Status`,
+      value: startCaseLabel(status),
+      status: status === "maintenance" ? "warning" : status === "offline" ? "error" : "normal",
+      time: formatRelativeTime(snapshot.lastSeenAt),
+      path: `effective.device.${label}.status`,
+      rawValue: status,
+    });
+  });
+
+  return rows;
+}
+
 function findMetricByPath(rows, matcher) {
   return rows.find((row) => matcher(row.path.toLowerCase(), row.rawValue));
 }
@@ -417,8 +476,16 @@ export default function EnvironmentDashboard() {
   }, [relatedDevices]);
 
   const sensorRows = useMemo(
-    () => buildMetricRows(boxActivity, deviceActivities, devicesById),
-    [boxActivity, deviceActivities, devicesById]
+    () => {
+      const effectiveRows = buildEffectiveStatusRows(box, relatedDevices);
+      const payloadRows = buildMetricRows(boxActivity, deviceActivities, devicesById).filter((row) => {
+        const path = String(row.path || "").toLowerCase();
+        return !path.includes("wifi") && !path.includes("mqtt") && !path.includes("online") && !path.includes("status");
+      });
+
+      return [...effectiveRows, ...payloadRows].slice(0, 16);
+    },
+    [box, relatedDevices, boxActivity, deviceActivities, devicesById]
   );
 
   const statCards = useMemo(() => buildStatCards(sensorRows), [sensorRows]);

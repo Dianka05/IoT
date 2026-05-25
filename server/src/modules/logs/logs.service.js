@@ -50,15 +50,28 @@ async function logAuthDenied(payload, reason) {
     })
   }
 
+  const normalizedReason = String(reason || '').trim().toLowerCase()
+  const isBlockedCard = normalizedReason === 'blocked_card'
+  const type = isBlockedCard ? 'blocked_card_attempt' : 'auth_denied'
+  const message = isBlockedCard
+    ? 'Blocked RFID card was used'
+    : normalizedReason === 'card_status_lost'
+      ? 'Lost RFID card was used'
+      : normalizedReason === 'user_inactive'
+        ? 'Access denied because user is inactive'
+        : 'Access denied'
+
   return writeLog({
-    type: 'auth_denied',
-    level: 'info',
+    type,
+    level: isBlockedCard ? 'warning' : 'info',
     source: 'mqtt',
     boxId: payload.boxId || null,
     uid: payload.uid || null,
+    userId: payload.userId || null,
+    userName: payload.userName || null,
     organizationId: await resolveOrganizationId(payload),
     reason: reason || null,
-    message: 'Access denied',
+    message,
     payload,
   })
 }
@@ -71,6 +84,7 @@ async function logAuthGranted(session) {
     boxId: session.boxId || null,
     uid: session.uid || null,
     userId: session.userId || null,
+    userName: session.userName || null,
     sessionId: session.sessionId || null,
     deviceIds: session.deviceIds || [],
     organizationId: await resolveOrganizationId(session, session),

@@ -55,7 +55,12 @@ function mapLogStatus(log) {
   const level = String(log.level || "").toLowerCase();
   const type = String(log.type || "").toLowerCase();
 
-  if (level === "error" || type.includes("denied") || type.includes("error")) {
+  if (
+    level === "error" ||
+    type.includes("denied") ||
+    type.includes("blocked") ||
+    type.includes("error")
+  ) {
     return "FAILED";
   }
 

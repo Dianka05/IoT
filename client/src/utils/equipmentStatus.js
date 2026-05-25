@@ -91,8 +91,8 @@ export function getConnectivitySnapshot(entity = {}) {
 
   return {
     mode,
-    wifi,
-    mqtt,
+    wifi: manuallyOffline || isStale ? false : wifi,
+    mqtt: manuallyOffline || isStale ? false : mqtt,
     online: manuallyOffline || isStale ? false : online,
     reportedStatus,
     status: manuallyOffline
@@ -112,6 +112,15 @@ export function getDisplayStatus(entity = {}) {
   const snapshot = getConnectivitySnapshot(entity);
   const baseStatus = snapshot.status || "offline";
   const occupancyStatus = String(entity?.occupancy?.status || "").toLowerCase();
+  const boxStatus = String(entity?.boxState?.status || "").toLowerCase();
+
+  if (boxStatus === "maintenance") {
+    return "maintenance";
+  }
+
+  if (boxStatus === "offline") {
+    return "offline";
+  }
 
   if (baseStatus === "maintenance") {
     return "maintenance";

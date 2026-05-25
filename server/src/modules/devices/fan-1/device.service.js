@@ -102,13 +102,23 @@ async function getDevicesForOrganization(organizationId, limit = 50) {
   const items = await listDevicesByOrganization(organizationId, limit)
   const occupancy = await buildOccupancyMaps(organizationId)
 
-  return items.map((item) => {
+  return Promise.all(items.map(async (item) => {
     const deviceId = item.deviceId || item.id
+    const box = item.boxId ? await getBoxById(item.boxId) : null
+    const freshBox = box ? applyConnectivityFreshness(box) : null
+
     return applyConnectivityFreshness({
       ...item,
+      boxState: freshBox
+        ? {
+            boxId: freshBox.boxId || freshBox.id || null,
+            status: freshBox.status || 'offline',
+            active: freshBox.active !== false,
+          }
+        : null,
       occupancy: occupancy.byDeviceId.get(deviceId) || null,
     })
-  })
+  }))
 }
 
 async function getDevices(limit = 50) {
@@ -121,8 +131,17 @@ async function getDevice(deviceId) {
   if (!item) return null
 
   const occupancy = await buildOccupancyMaps(item.organizationId)
+  const box = item.boxId ? await getBoxById(item.boxId) : null
+  const freshBox = box ? applyConnectivityFreshness(box) : null
   return applyConnectivityFreshness({
     ...item,
+    boxState: freshBox
+      ? {
+          boxId: freshBox.boxId || freshBox.id || null,
+          status: freshBox.status || 'offline',
+          active: freshBox.active !== false,
+        }
+      : null,
     occupancy: occupancy.byDeviceId.get(deviceId) || null,
   })
 }
