@@ -35,6 +35,7 @@ import {
   getCurrentUserSessions,
 } from '../utils/currentUser';
 import SurfaceCard from "../components/surfaceCard";
+import { getDisplayStatus } from "../utils/equipmentStatus";
 
 const ACTIVE_SESSION_STATUSES = new Set(['pending', 'active']);
 const ALERT_TYPES = new Set(['auth_denied', 'mqtt_handler_error']);
@@ -160,13 +161,17 @@ function buildDeviceRows(devices, sessions) {
   return devices.map((device) => {
     const deviceId = device.deviceId || device.id;
     const activeSession = activeSessionByDevice.get(deviceId);
-    const rawStatus = String(device.status || '').toLowerCase();
+    const rawStatus = getDisplayStatus(device);
 
     let status = 'IDLE';
     if (activeSession) {
       status = 'IN USE';
     } else if (device.active === false || rawStatus === 'offline') {
       status = 'OFFLINE';
+    } else if (rawStatus === 'busy' || rawStatus === 'reserved' || rawStatus === 'in_use') {
+      status = 'IN USE';
+    } else if (rawStatus === 'maintenance') {
+      status = 'MAINTENANCE';
     } else if (rawStatus === 'active' || rawStatus === 'online') {
       status = 'ACTIVE';
     }
@@ -361,8 +366,8 @@ const Dashboard = () => {
 
     const onlineDevices = overview.devices.filter((device) => {
       if (device.active === false) return false;
-      const status = String(device.status || '').toLowerCase();
-      return status === 'active' || status === 'online' || status === 'idle' || status === 'ready';
+      const status = getDisplayStatus(device);
+      return status !== 'offline';
     }).length;
 
     const alerts = overview.logs.filter((log) =>

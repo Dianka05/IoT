@@ -3,8 +3,15 @@ const {
   getActivityByDocId,
   listActivities,
 } = require('./activities.store.firestore')
-const { getBoxById } = require('../boxes/main-box/boxes.store.firestore')
-const { getDeviceById } = require('../devices/fan-1/devices.store.firestore')
+const {
+  getBoxById,
+  updateBoxById,
+} = require('../boxes/main-box/boxes.store.firestore')
+const {
+  getDeviceById,
+  updateDeviceById,
+} = require('../devices/fan-1/devices.store.firestore')
+const { deriveConnectivityState } = require('../../shared/connectivity-state')
 
 async function resolveActivityOrganizationId(type, entityId) {
   if (type === 'box') {
@@ -21,13 +28,26 @@ async function resolveActivityOrganizationId(type, entityId) {
 }
 
 async function recordBoxStatus(boxId, payload) {
-  return upsertActivity({
+  const activity = await upsertActivity({
     type: 'box',
     entityId: boxId,
     activityType: 'status',
     organizationId: await resolveActivityOrganizationId('box', boxId),
     payload,
   })
+
+  const box = await getBoxById(boxId)
+  if (box) {
+    const snapshot = deriveConnectivityState(payload, box)
+
+    await updateBoxById(boxId, {
+      status: snapshot.status,
+      connectivity: snapshot.connectivity,
+      lastStatusPayload: payload,
+    })
+  }
+
+  return activity
 }
 
 async function recordBoxSessions(boxId, payload) {
@@ -41,13 +61,26 @@ async function recordBoxSessions(boxId, payload) {
 }
 
 async function recordDeviceStatus(deviceId, payload) {
-  return upsertActivity({
+  const activity = await upsertActivity({
     type: 'device',
     entityId: deviceId,
     activityType: 'status',
     organizationId: await resolveActivityOrganizationId('device', deviceId),
     payload,
   })
+
+  const device = await getDeviceById(deviceId)
+  if (device) {
+    const snapshot = deriveConnectivityState(payload, device)
+
+    await updateDeviceById(deviceId, {
+      status: snapshot.status,
+      connectivity: snapshot.connectivity,
+      lastStatusPayload: payload,
+    })
+  }
+
+  return activity
 }
 
 async function recordDeviceFanState(deviceId, payload) {

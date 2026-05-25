@@ -20,6 +20,7 @@ import {
 } from "../api/equipment";
 import { useAuth } from "../auth/AuthContext";
 import { canUseOperationsDashboard } from "../auth/roles";
+import { getDisplayStatus } from "../utils/equipmentStatus";
 
 function getDeviceId(device) {
   return device?.deviceId || device?.id || "";
@@ -30,9 +31,8 @@ function getBoxId(box) {
 }
 
 function normalizeDeviceStatus(device) {
-  if (device.active === false) return "DISABLED";
-
-  const status = String(device.status || "idle").toLowerCase();
+  const status = getDisplayStatus(device);
+  if (status === "disabled") return "DISABLED";
 
   if (status === "idle" || status === "free") return "FREE";
   if (status === "busy" || status === "in_use" || status === "reserved") {

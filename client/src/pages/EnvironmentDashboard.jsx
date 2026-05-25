@@ -14,6 +14,7 @@ import { getActivities } from "../api/activities";
 import { getBoxes, getDevices } from "../api/equipment";
 import { useAuth } from "../auth/AuthContext";
 import { canUseOperationsDashboard, getDefaultRouteForRole } from "../auth/roles";
+import { getConnectivitySnapshot } from "../utils/equipmentStatus";
 
 function getDeviceId(device) {
   return device?.deviceId || device?.id || "";
@@ -177,6 +178,9 @@ function buildMetricRows(boxActivity, deviceActivities, devicesById) {
       path.includes("temp") ||
       path.includes("humid") ||
       path.includes("status") ||
+      path.includes("mode") ||
+      path.includes("wifi") ||
+      path.includes("mqtt") ||
       path.includes("fan") ||
       path.includes("rpm") ||
       path.includes("door") ||
@@ -289,13 +293,17 @@ function findPayloadValue(payload, matchers = []) {
 
 function buildSystemIdentity(box, boxActivity, relatedDevices) {
   const payload = boxActivity?.payload || {};
+  const snapshot = getConnectivitySnapshot({
+    ...box,
+    lastStatusPayload: payload,
+  });
   const connectionValue = findPayloadValue(payload, ["connection", "connected", "online", "network"]);
   const firmwareValue = findPayloadValue(payload, ["firmware", "version"]);
   const modelValue = findPayloadValue(payload, ["model", "hardware"]);
 
   const isConnected = typeof connectionValue === "boolean"
     ? connectionValue
-    : String(connectionValue || box?.status || "").toLowerCase().includes("online");
+    : snapshot.online === true;
 
   return [
     { label: "Box ID", value: box?.boxId || box?.id || "Unknown" },
@@ -303,9 +311,13 @@ function buildSystemIdentity(box, boxActivity, relatedDevices) {
     { label: "Devices", value: String(relatedDevices.length || 0) },
     { label: "Model", value: modelValue ? String(modelValue) : (box?.name || "Unknown") },
     { label: "Firmware", value: firmwareValue ? String(firmwareValue) : "Not reported" },
+    { label: "Mode", value: snapshot.mode || "Unknown" },
+    { label: "WiFi", value: snapshot.wifi === null ? "Unknown" : snapshot.wifi ? "Connected" : "Offline" },
+    { label: "MQTT", value: snapshot.mqtt === null ? "Unknown" : snapshot.mqtt ? "Connected" : "Offline" },
+    { label: "Online", value: snapshot.online === null ? "Unknown" : snapshot.online ? "Yes" : "No" },
     {
       label: "Connection",
-      value: isConnected ? "Connected" : (box?.status || "Unknown"),
+      value: isConnected ? "Connected" : "Offline",
       status: isConnected ? "active" : undefined,
     },
   ];

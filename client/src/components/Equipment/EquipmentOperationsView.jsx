@@ -1,6 +1,7 @@
 import { Box, Cpu, MapPin, Pencil, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import SurfaceCard from "../surfaceCard";
+import { getConnectivitySnapshot, getDisplayStatus } from "../../utils/equipmentStatus";
 
 function getBoxId(box) {
   return box.boxId || box.id;
@@ -102,7 +103,13 @@ function buildBoxGroups(boxes = [], devices = []) {
 
 function DeviceRow({ device, onEdit }) {
   const deviceId = getDeviceId(device);
-  const status = normalizeStatus(device.status, device.active);
+  const status = normalizeStatus(getDisplayStatus(device), device.active);
+  const connectivity = getConnectivitySnapshot(device);
+  const telemetry = [
+    connectivity.mode ? `Mode ${connectivity.mode}` : null,
+    connectivity.wifi === null ? null : `WiFi ${connectivity.wifi ? "On" : "Off"}`,
+    connectivity.mqtt === null ? null : `MQTT ${connectivity.mqtt ? "On" : "Off"}`,
+  ].filter(Boolean).join(" | ");
 
   return (
     <SurfaceCard className="flex justify-between flex-col gap-3 border-slate-100 bg-slate-50/70 px-4 py-4 md:flex-row md:items-center md:justify-between">
@@ -118,6 +125,11 @@ function DeviceRow({ device, onEdit }) {
           <p className="mt-1 text-xs text-slate-500">
             {deviceId} | {device.type || "device"}
           </p>
+          {telemetry && (
+            <p className="mt-1 text-[11px] font-medium text-slate-400">
+              {telemetry}
+            </p>
+          )}
         </div>
       </div>
 
@@ -140,8 +152,14 @@ function DeviceRow({ device, onEdit }) {
 }
 
 function BoxCard({ box, onEditBox, onAddDevice, onEditDevice }) {
-  const status = normalizeStatus(box.status, box.active);
+  const status = normalizeStatus(getDisplayStatus(box), box.active);
   const deviceCount = box.devices.length;
+  const connectivity = getConnectivitySnapshot(box);
+  const telemetry = [
+    connectivity.mode ? `Mode ${connectivity.mode}` : null,
+    connectivity.wifi === null ? null : `WiFi ${connectivity.wifi ? "On" : "Off"}`,
+    connectivity.mqtt === null ? null : `MQTT ${connectivity.mqtt ? "On" : "Off"}`,
+  ].filter(Boolean).join(" | ");
 
   return (
     <SurfaceCard className="p-6">
@@ -166,6 +184,11 @@ function BoxCard({ box, onEditBox, onAddDevice, onEditDevice }) {
                 {box.boxId}
                 {box.location ? ` | ${box.location}` : ""}
               </p>
+              {telemetry && (
+                <p className="mt-2 text-[11px] font-medium text-slate-400">
+                  {telemetry}
+                </p>
+              )}
 
               <div className="mt-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <MapPin size={14} />
