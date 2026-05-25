@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function SessionsRow({ session, onTerminate }) {
   const {
     id,
@@ -46,9 +48,12 @@ export default function SessionsRow({ session, onTerminate }) {
       Terminate
     </button>
   ) : (
-    <button className="text-sm font-medium text-orange-600 transition hover:text-orange-800">
+    <Link
+      to={`/logs?sessionId=${encodeURIComponent(id)}`}
+      className="text-sm font-medium text-orange-600 transition hover:text-orange-800"
+    >
       View Logs
-    </button>
+    </Link>
   );
 
   return (

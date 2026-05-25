@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 
 import LoadingScreen from "../components/loadingScreen";
 import PageHeader from "../components/pageHeader";
@@ -68,22 +68,52 @@ function mapLogStatus(log) {
 
 function mapLogItem(log) {
   const payload = log.payload || {};
-  const rfidUid = payload.uid || log.uid || "";
+  const eventPayload = payload.event || {};
+  const sessionPayload = payload.session || {};
+  const endedBy = payload.endedBy || {};
+  const rfidUid =
+    payload.uid ||
+    sessionPayload.uid ||
+    eventPayload.uid ||
+    log.uid ||
+    "";
+  const sessionId =
+    log.sessionId ||
+    payload.sessionId ||
+    eventPayload.sessionId ||
+    sessionPayload.sessionId ||
+    "";
+  const boxId =
+    payload.boxId ||
+    sessionPayload.boxId ||
+    eventPayload.boxId ||
+    log.boxId ||
+    "System";
+  const user =
+    log.userName ||
+    sessionPayload.userName ||
+    endedBy.name ||
+    log.userId ||
+    payload.uid ||
+    log.uid ||
+    "System";
 
   return {
     id: log.id,
     timestamp: formatTimestamp(log.createdAt || log.updatedAt),
     eventType: startCase(log.type || log.level || "system_event"),
-    user: log.userName || log.userId || payload.uid || log.uid || "System",
+    user,
     rfidUid,
-    equipment: payload.boxId || log.boxId || "System",
+    equipment: boxId,
     action: log.message || startCase(payload.type || "system activity"),
     status: mapLogStatus(log),
+    sessionId,
   };
 }
 
 export default function Logs() {
   const { role, loading: authLoading, currentOrganizationId } = useAuth();
+  const [searchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [logs, setLogs] = useState([]);
@@ -93,6 +123,7 @@ export default function Logs() {
   const [error, setError] = useState("");
 
   const perPage = 6;
+  const searchSessionId = searchParams.get("sessionId") || "";
 
   const loadLogsData = useCallback(async () => {
     if (!currentOrganizationId) {
@@ -108,8 +139,11 @@ export default function Logs() {
     try {
       const items = await getLogs(200);
       const mapped = items.map(mapLogItem);
+      const scoped = searchSessionId
+        ? mapped.filter((item) => item.sessionId === searchSessionId)
+        : mapped;
       setLogs(mapped);
-      setFilteredData(mapped);
+      setFilteredData(scoped);
       setPage(1);
     } catch (err) {
       console.error("Failed to load logs:", err);
@@ -117,7 +151,7 @@ export default function Logs() {
     } finally {
       setLoading(false);
     }
-  }, [currentOrganizationId]);
+  }, [currentOrganizationId, searchSessionId]);
 
   useEffect(() => {
     if (!authLoading && canUseOperationsDashboard(role)) {
@@ -128,8 +162,11 @@ export default function Logs() {
   const handleFilter = (filters) => {
     const result = logs.filter((log) => {
       const logDate = toFilterDate(log.timestamp);
+      const sessionMatches =
+        searchSessionId === "" || log.sessionId === searchSessionId;
 
       return (
+        sessionMatches &&
         (filters.eventType === "" || log.eventType === filters.eventType) &&
         (filters.user === "" || log.user.toLowerCase().includes(filters.user.toLowerCase())) &&
         (filters.equipment === "" || log.equipment.toLowerCase().includes(filters.equipment.toLowerCase())) &&
@@ -192,6 +229,12 @@ export default function Logs() {
       {error && (
         <StatusBanner tone="error" className="mb-6">
           {error}
+        </StatusBanner>
+      )}
+
+      {searchSessionId && (
+        <StatusBanner className="mb-6 border-orange-200 bg-orange-50 text-orange-700">
+          Showing logs for session <span className="font-semibold">{searchSessionId}</span>.
         </StatusBanner>
       )}
 

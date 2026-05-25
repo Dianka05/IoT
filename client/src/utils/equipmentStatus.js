@@ -36,6 +36,13 @@ function normalizeMode(value) {
 export function getConnectivitySnapshot(entity = {}) {
   const connectivity = entity?.connectivity || {};
   const payload = entity?.lastStatusPayload || {};
+  const statusOverride = String(
+    entity?.statusOverride ??
+      connectivity.statusOverride ??
+      ""
+  )
+    .trim()
+    .toLowerCase();
 
   const mode = normalizeMode(
     connectivity.mode ??
@@ -78,24 +85,30 @@ export function getConnectivitySnapshot(entity = {}) {
   const lastSeenAt = toMillis(connectivity.lastSeenAt ?? entity?.lastSeenAt ?? null);
   const staleAfterMs = 120000;
   const isStale = !lastSeenAt || Date.now() - lastSeenAt > staleAfterMs;
+  const manuallyOffline =
+    entity?.active === false || statusOverride === "offline";
+  const manuallyMaintenance = statusOverride === "maintenance";
 
   return {
     mode,
     wifi,
     mqtt,
-    online: isStale ? false : online,
+    online: manuallyOffline || isStale ? false : online,
     reportedStatus,
-    status: isStale && entity?.active !== false ? "offline" : (derivedStatus || "offline"),
+    status: manuallyOffline
+      ? "offline"
+      : manuallyMaintenance
+        ? "maintenance"
+        : isStale
+          ? "offline"
+          : (derivedStatus || "offline"),
     lastSeenAt,
     isStale,
+    statusOverride,
   };
 }
 
 export function getDisplayStatus(entity = {}) {
-  if (entity?.active === false) {
-    return "disabled";
-  }
-
   const snapshot = getConnectivitySnapshot(entity);
   const baseStatus = snapshot.status || "offline";
   const occupancyStatus = String(entity?.occupancy?.status || "").toLowerCase();

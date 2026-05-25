@@ -95,9 +95,44 @@ async function addBox(userProfile, data) {
     location: data.location || null,
     active: data.active ?? true,
     status: data.status || 'offline',
+    statusOverride:
+      data.active === false
+        ? 'offline'
+        : String(data.status || '').trim().toLowerCase() === 'maintenance'
+          ? 'maintenance'
+          : null,
     deviceIds,
     organizationId,
   })
+}
+
+function applyManualStatusPatch(current, patch = {}) {
+  const next = { ...patch }
+  const nextActive =
+    patch.active !== undefined ? patch.active : current.active !== false
+  const requestedStatus =
+    patch.status !== undefined
+      ? String(patch.status || '').trim().toLowerCase()
+      : null
+
+  if (nextActive === false) {
+    next.active = false
+    next.status = 'offline'
+    next.statusOverride = 'offline'
+    return next
+  }
+
+  if (requestedStatus === 'maintenance') {
+    next.status = 'maintenance'
+    next.statusOverride = 'maintenance'
+    return next
+  }
+
+  if (patch.active === true || patch.status !== undefined) {
+    next.statusOverride = null
+  }
+
+  return next
 }
 
 async function getBoxesForOrganization(organizationId, limit = 50) {
@@ -144,7 +179,7 @@ async function patchBox(userProfile, boxId, patch) {
     )
   }
 
-  const updated = await updateBoxById(boxId, patch)
+  const updated = await updateBoxById(boxId, applyManualStatusPatch(current, patch))
   return updated ? applyConnectivityFreshness(updated) : null
 }
 

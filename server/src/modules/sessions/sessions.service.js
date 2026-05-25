@@ -105,9 +105,33 @@ async function handleSessionEnded(msg) {
     }
   }
 
-  const session = await store.endSession(sessionId)
+  const terminationRequest = existingSession?.terminationRequest || null
+  const endReason =
+    msg.payload.reason ||
+    terminationRequest?.reason ||
+    'automatic'
+  const endedByUserId = terminationRequest?.requestedByUserId || null
+  const endedByName = terminationRequest?.requestedByName || null
+  const endedByRole = terminationRequest?.requestedByRole || null
+  const forced = terminationRequest?.forced === true
+
+  const session = await store.endSession(sessionId, {
+    endReason,
+    endedByUserId,
+    endedByName,
+    endedByRole,
+    forced,
+    terminationRequest: null,
+  })
+
+  if (existingSession?.endLogWrittenAt) {
+    return session
+  }
+
   await logSessionEnded(msg.payload, session)
-  return session
+  return store.updateSession(sessionId, {
+    endLogWrittenAt: new Date(),
+  })
 }
 
 function handleSessionsState(msg) {
@@ -258,15 +282,58 @@ async function startSessionById(sessionId) {
   return store.markSessionStarted(sessionId)
 }
 
-async function endSessionById(sessionId, reason = 'manual') {
+async function endSessionById(sessionId, reason = 'manual', actor = null) {
   const session = await store.getSession(sessionId)
   if (!session) return null
+
+  const forced =
+    Boolean(actor) &&
+    (actor.role === 'admin' || actor.role === 'technician') &&
+    actor.userId !== session.userId
+
+  const terminationRequest = actor
+    ? {
+        reason,
+        requestedAt: new Date(),
+        requestedByUserId: actor.userId || null,
+        requestedByName: actor.name || actor.email || actor.userId || 'Operations',
+        requestedByRole: actor.role || null,
+        forced,
+      }
+    : {
+        reason,
+        requestedAt: new Date(),
+        requestedByUserId: null,
+        requestedByName: null,
+        requestedByRole: null,
+        forced: false,
+      }
+
+  const endedSession = await store.endSession(sessionId, {
+    endReason: reason,
+    endedByUserId: terminationRequest.requestedByUserId,
+    endedByName: terminationRequest.requestedByName,
+    endedByRole: terminationRequest.requestedByRole,
+    forced: terminationRequest.forced,
+    terminationRequest,
+  })
 
   if (session.boxId) {
     publishEndSession(session.boxId, { sessionId, reason })
   }
 
-  return store.endSession(sessionId)
+  await logSessionEnded(
+    {
+      boxId: session.boxId,
+      sessionId,
+      reason,
+    },
+    endedSession
+  )
+
+  return store.updateSession(sessionId, {
+    endLogWrittenAt: new Date(),
+  })
 }
 
 module.exports = {

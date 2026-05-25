@@ -90,7 +90,11 @@ router.post('/sessions', requireAuth, requireUserProfile, requireOrganizationCon
       message.includes('Device is outside organization') ||
       message.includes('Device does not belong to box') ||
       message.includes('Device is not allowed for user') ||
-      message.includes('Device is busy')
+      message.includes('Device is busy') ||
+      message.includes('Device is in maintenance mode') ||
+      message.includes('Device is not available') ||
+      message.includes('Box is in maintenance mode') ||
+      message.includes('Box is not available')
     ) {
       return next(Errors.BadRequest(message))
     }
@@ -139,7 +143,11 @@ router.post('/sessions/:sessionId/end', requireAuth, requireUserProfile, require
       return next(Errors.NotFound('Session not found'))
     }
 
-    const item = await endSessionById(req.params.sessionId, reason || 'manual')
+    const item = await endSessionById(
+      req.params.sessionId,
+      reason || 'manual',
+      req.userProfile
+    )
 
     if (!item || item.organizationId !== req.userProfile.currentOrganizationId) {
       return next(Errors.NotFound('Session not found'))

@@ -81,6 +81,21 @@ async function markSessionStarted(sessionId) {
   return getSession(sessionId)
 }
 
+async function updateSession(sessionId, patch = {}) {
+  const current = await getSession(sessionId)
+  if (!current) return null
+
+  await db.collection('sessions').doc(sessionId).set(
+    {
+      ...patch,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  )
+
+  return getSession(sessionId)
+}
+
 async function findPendingSessionForAuth(uid, boxId) {
   const snapshot = await db
     .collection('sessions')
@@ -96,12 +111,13 @@ async function findPendingSessionForAuth(uid, boxId) {
   return mapDoc(snapshot.docs[0])
 }
 
-async function endSession(sessionId) {
+async function endSession(sessionId, patch = {}) {
   const current = await getSession(sessionId)
   if (!current) return null
 
   await db.collection('sessions').doc(sessionId).set(
     {
+      ...patch,
       status: 'ended',
       endedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -158,6 +174,7 @@ module.exports = {
   listSessions,
   listSessionsByOrganization,
   markSessionStarted,
+  updateSession,
   endSession,
   isDeviceBusy,
   findPendingSessionForAuth,

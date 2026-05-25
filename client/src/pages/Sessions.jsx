@@ -69,6 +69,7 @@ function mapSessionRow(session, nowMs, deviceNameMap) {
 
   return {
     id: session.sessionId || session.id,
+    sessionId: session.sessionId || session.id,
     userName: session.userName || session.userId || "Unknown User",
     userRole: formatRole(session.role),
     hardwareLabel:

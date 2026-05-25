@@ -12,6 +12,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Registration from './pages/Registration';
 import Sessions from './pages/Sessions';
 import RfidAuth from './pages/RfidAuth';
+import Configuration from './pages/Configuration';
 import LoadingScreen from './components/loadingScreen';
 import { useAuth } from './auth/AuthContext';
 import { getDefaultRouteForRole } from './auth/roles';
@@ -138,7 +139,7 @@ function App() {
         <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
         <Route path="/logs" element={<ProtectedRoute><Logs /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-        <Route path="/configuration" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/configuration" element={<ProtectedRoute><Configuration /></ProtectedRoute>} />
         <Route path="/rfid-auth" element={<ProtectedRoute><RfidAuth /></ProtectedRoute>} />
         <Route path="/user-registry" element={<Navigate to="/users" replace />} />
         <Route path="/create-organization" element={<CreateOrganizationRoute />} />

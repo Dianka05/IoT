@@ -13,6 +13,126 @@ const {
 } = require('../devices/fan-1/devices.store.firestore')
 const { deriveConnectivityState } = require('../../shared/connectivity-state')
 const { FieldValue } = require('../../integrations/firebase/firebase.client')
+const {
+  getPresenceDetectionConfigForBox,
+} = require('../configuration/configuration.service')
+const { logSuspiciousPresence } = require('../logs/logs.service')
+
+function toMillis(timestamp) {
+  if (!timestamp) return null
+  if (typeof timestamp?.toMillis === 'function') {
+    return timestamp.toMillis()
+  }
+  if (timestamp instanceof Date) {
+    return timestamp.getTime()
+  }
+  if (typeof timestamp?._seconds === 'number') {
+    return timestamp._seconds * 1000 + Math.floor((timestamp._nanoseconds || 0) / 1000000)
+  }
+  if (typeof timestamp === 'number') {
+    return timestamp
+  }
+  return null
+}
+
+function toNullableNumber(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+async function evaluateSuspiciousPresence(box, payload) {
+  const organizationId = box.organizationId || null
+  const boxId = box.boxId || box.id
+
+  if (!organizationId || !boxId) {
+    return
+  }
+
+  const config = await getPresenceDetectionConfigForBox(organizationId, boxId)
+  const securityState = box.securityState || {}
+  const distanceCm = toNullableNumber(payload.distanceCm)
+  const motion = payload.motion === true
+  const presenceDetected =
+    config.enabled === true &&
+    distanceCm !== null &&
+    distanceCm <= Number(config.distanceCmThreshold || 0) &&
+    (config.requireMotion !== true || motion)
+
+  if (!presenceDetected) {
+    if (securityState.presenceStartedAt || securityState.lastPresenceDistanceCm !== undefined) {
+      await updateBoxById(boxId, {
+        securityState: {
+          ...securityState,
+          presenceStartedAt: null,
+          lastPresenceDistanceCm: distanceCm,
+        },
+      })
+    }
+
+    return
+  }
+
+  const nowMs = Date.now()
+  const presenceStartedAtMs = toMillis(securityState.presenceStartedAt)
+  const lastSuspiciousLoggedAtMs = toMillis(securityState.lastSuspiciousLoggedAt)
+  const lastDeniedAtMs = toMillis(securityState.lastDeniedAt)
+  const durationThresholdMs =
+    Number(config.suspiciousPresenceDurationSec || 0) * 1000
+  const cooldownMs =
+    Number(config.suspiciousPresenceCooldownSec || 0) * 1000
+  const deniedLookbackMs =
+    Number(config.deniedAccessLookbackSec || 0) * 1000
+
+  if (!presenceStartedAtMs) {
+    await updateBoxById(boxId, {
+      securityState: {
+        ...securityState,
+        presenceStartedAt: new Date(),
+        lastPresenceDistanceCm: distanceCm,
+      },
+    })
+
+    return
+  }
+
+  const durationMs = Math.max(0, nowMs - presenceStartedAtMs)
+  const withinCooldown =
+    lastSuspiciousLoggedAtMs !== null &&
+    nowMs - lastSuspiciousLoggedAtMs < cooldownMs
+
+  if (durationMs < durationThresholdMs || withinCooldown) {
+    await updateBoxById(boxId, {
+      securityState: {
+        ...securityState,
+        lastPresenceDistanceCm: distanceCm,
+      },
+    })
+
+    return
+  }
+
+  const recentDenied =
+    lastDeniedAtMs !== null && nowMs - lastDeniedAtMs <= deniedLookbackMs
+
+  await logSuspiciousPresence({
+    organizationId,
+    boxId,
+    durationSec: Math.floor(durationMs / 1000),
+    distanceCm,
+    motion,
+    lastDeniedUid: recentDenied ? securityState.lastDeniedUid || null : null,
+    lastDeniedReason: recentDenied ? securityState.lastDeniedReason || null : null,
+    payload,
+  })
+
+  await updateBoxById(boxId, {
+    securityState: {
+      ...securityState,
+      lastPresenceDistanceCm: distanceCm,
+      lastSuspiciousLoggedAt: new Date(),
+    },
+  })
+}
 
 async function resolveActivityOrganizationId(type, entityId) {
   if (type === 'box') {
@@ -43,6 +163,7 @@ async function recordBoxStatus(boxId, payload) {
 
     await updateBoxById(boxId, {
       status: snapshot.status,
+      statusOverride: box.statusOverride || null,
       lastSeenAt: FieldValue.serverTimestamp(),
       connectivity: {
         ...snapshot.connectivity,
@@ -50,6 +171,8 @@ async function recordBoxStatus(boxId, payload) {
       },
       lastStatusPayload: payload,
     })
+
+    await evaluateSuspiciousPresence(box, payload)
   }
 
   return activity
@@ -80,6 +203,7 @@ async function recordDeviceStatus(deviceId, payload) {
 
     await updateDeviceById(deviceId, {
       status: snapshot.status,
+      statusOverride: device.statusOverride || null,
       lastSeenAt: FieldValue.serverTimestamp(),
       connectivity: {
         ...snapshot.connectivity,

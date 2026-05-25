@@ -14,7 +14,7 @@ import { getActivities } from "../api/activities";
 import { getBoxes, getDevices } from "../api/equipment";
 import { useAuth } from "../auth/AuthContext";
 import { canUseOperationsDashboard, getDefaultRouteForRole } from "../auth/roles";
-import { getConnectivitySnapshot } from "../utils/equipmentStatus";
+import { getConnectivitySnapshot, getDisplayStatus } from "../utils/equipmentStatus";
 
 function getDeviceId(device) {
   return device?.deviceId || device?.id || "";
@@ -297,17 +297,26 @@ function buildSystemIdentity(box, boxActivity, relatedDevices) {
     ...box,
     lastStatusPayload: payload,
   });
+  const displayStatus = getDisplayStatus({
+    ...box,
+    lastStatusPayload: payload,
+  });
   const connectionValue = findPayloadValue(payload, ["connection", "connected", "online", "network"]);
   const firmwareValue = findPayloadValue(payload, ["firmware", "version"]);
   const modelValue = findPayloadValue(payload, ["model", "hardware"]);
 
-  const isConnected = typeof connectionValue === "boolean"
-    ? connectionValue
-    : snapshot.online === true;
+  const isConnected = snapshot.online === false
+    ? false
+    : snapshot.online === true
+      ? true
+      : typeof connectionValue === "boolean"
+        ? connectionValue
+        : false;
 
   return [
     { label: "Box ID", value: box?.boxId || box?.id || "Unknown" },
     { label: "Location", value: box?.location || "Unknown" },
+    { label: "Status", value: startCaseLabel(displayStatus) },
     { label: "Devices", value: String(relatedDevices.length || 0) },
     { label: "Model", value: modelValue ? String(modelValue) : (box?.name || "Unknown") },
     { label: "Firmware", value: firmwareValue ? String(firmwareValue) : "Not reported" },

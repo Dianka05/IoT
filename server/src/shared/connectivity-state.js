@@ -41,6 +41,7 @@ function normalizeReportedStatus(value) {
 
 function deriveConnectivityState(payload = {}, entity = {}) {
   const reportedStatus = normalizeReportedStatus(payload.status || payload.state || null)
+  const statusOverride = normalizeReportedStatus(entity.statusOverride || null)
   const mode = normalizeMode(payload.mode || payload.operationMode || null)
   const wifi = parseBooleanLike(payload.wifi)
   const mqtt = parseBooleanLike(payload.mqtt)
@@ -62,20 +63,22 @@ function deriveConnectivityState(payload = {}, entity = {}) {
 
   let status = 'offline'
 
-  if (active) {
-    if (wifi === false || mqtt === false || online === false) {
-      status = 'offline'
-    } else if (reportedStatus === 'busy' || reportedStatus === 'reserved' || reportedStatus === 'in_use') {
-      status = reportedStatus
-    } else if (reportedStatus === 'maintenance') {
-      status = 'maintenance'
-    } else if (reportedStatus === 'idle' || reportedStatus === 'free' || reportedStatus === 'ready') {
-      status = reportedStatus
-    } else if (mode === 'MAINTENANCE') {
-      status = 'maintenance'
-    } else if (online === true || wifi === true || mqtt === true) {
-      status = 'online'
-    }
+  if (!active || statusOverride === 'offline') {
+    status = 'offline'
+  } else if (statusOverride === 'maintenance') {
+    status = 'maintenance'
+  } else if (wifi === false || mqtt === false || online === false) {
+    status = 'offline'
+  } else if (reportedStatus === 'busy' || reportedStatus === 'reserved' || reportedStatus === 'in_use') {
+    status = reportedStatus
+  } else if (reportedStatus === 'maintenance') {
+    status = 'maintenance'
+  } else if (reportedStatus === 'idle' || reportedStatus === 'free' || reportedStatus === 'ready') {
+    status = reportedStatus
+  } else if (mode === 'MAINTENANCE') {
+    status = 'maintenance'
+  } else if (online === true || wifi === true || mqtt === true) {
+    status = 'online'
   }
 
   return {
@@ -86,6 +89,7 @@ function deriveConnectivityState(payload = {}, entity = {}) {
       mqtt,
       mode,
       reportedStatus,
+      statusOverride,
       enabled: active,
     },
   }
@@ -96,15 +100,23 @@ function applyConnectivityFreshness(entity = {}, nowMs = Date.now()) {
   const snapshot = entity.connectivity || {}
   const lastSeenAt = getTimestampMillis(snapshot.lastSeenAt || entity.lastSeenAt || null)
   const active = entity.active !== false
+  const statusOverride = normalizeReportedStatus(entity.statusOverride || snapshot.statusOverride || null)
 
-  if (!active) {
+  if (!active || statusOverride === 'offline') {
     return {
       ...entity,
-      status: 'disabled',
+      status: 'offline',
       connectivity: {
         ...snapshot,
         online: false,
       },
+    }
+  }
+
+  if (statusOverride === 'maintenance') {
+    return {
+      ...entity,
+      status: 'maintenance',
     }
   }
 

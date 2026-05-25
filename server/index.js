@@ -16,6 +16,7 @@ const logsRoutes = require('./src/modules/logs/logs.routes')
 const authRoutes = require('./src/modules/auth/auth.routes')
 const activitiesRoutes = require('./src/modules/activities/activities.routes')
 const organizationsRoutes = require('./src/modules/organizations/organizations.routes')
+const configurationRoutes = require('./src/modules/configuration/configuration.routes')
 
 const cookieParser = require('cookie-parser')
 
@@ -109,6 +110,8 @@ app.use('/api', logsRoutes)
 app.use('/api', activitiesRoutes)
 
 app.use('/api', organizationsRoutes)
+
+app.use('/api', configurationRoutes)
 
 app.use('/api', authRoutes)
 
