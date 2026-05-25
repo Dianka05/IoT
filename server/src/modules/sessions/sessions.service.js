@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid')
+const { randomUUID } = require('crypto')
 const store = require('./sessions.store.firestore')
 const { publishEndSession, publishAuthResult } = require('../boxes/main-box/boxes.service')
 const { publishDeviceAccessSet, publishDeviceEndSession } = require('../devices/fan-1/device.service')
@@ -325,7 +325,7 @@ async function createPendingSession(data = {}) {
   }
 
   const session = {
-    sessionId: uuidv4(),
+    sessionId: randomUUID(),
     organizationId,
     boxId: data.boxId,
     uid: data.uid,

@@ -1,7 +1,7 @@
-const { v4: uuidv4 } = require('uuid')
+const { randomUUID } = require('crypto')
 
 function buildMessage(source, kind, name, payload) {
-    const uuid = uuidv4()
+    const uuid = randomUUID()
     return {
         messageId: uuid,
         timestamp: Date.now(),
