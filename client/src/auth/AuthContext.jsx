@@ -70,6 +70,7 @@ export function AuthProvider({ children }) {
     const normalizedRole = normalizeRole(profile?.role)
     const canCreateOrganizations =
       normalizedRole === 'admin' || !hasOrganizations
+    const mustChangePassword = profile?.mustChangePassword === true
 
     return {
       authUser,
@@ -79,6 +80,7 @@ export function AuthProvider({ children }) {
       currentOrganization,
       currentOrganizationId,
       hasOrganizations,
+      mustChangePassword,
       needsOrganizationSetup: Boolean(authUser?.auth?.uid) && !currentOrganizationId,
       canCreateOrganizations,
       role: normalizedRole,

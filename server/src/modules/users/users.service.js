@@ -9,9 +9,43 @@ const {
   updateUserById,
   deleteUserById,
 } = require('./users.store.firestore')
+const { getDeviceById } = require('../devices/fan-1/devices.store.firestore')
 
 function uniqueStrings(values = []) {
   return [...new Set(values.filter(Boolean).map((value) => String(value)))]
+}
+
+function normalizeCard(card = {}) {
+  const uid = String(card.uid || '')
+    .replace(/[^a-fA-F0-9]/g, '')
+    .toUpperCase()
+
+  if (!uid) {
+    return null
+  }
+
+  return {
+    uid,
+    status: String(card.status || 'active').toLowerCase(),
+  }
+}
+
+function normalizeCards(cards = []) {
+  const seen = new Set()
+  const normalized = []
+
+  for (const rawCard of Array.isArray(cards) ? cards : []) {
+    const card = normalizeCard(rawCard)
+
+    if (!card || seen.has(card.uid)) {
+      continue
+    }
+
+    seen.add(card.uid)
+    normalized.push(card)
+  }
+
+  return normalized
 }
 
 function normalizeMembership(membership = {}) {
@@ -100,6 +134,8 @@ function normalizeUserProfile(user, preferredOrganizationId = null) {
     role: currentMembership?.role || null,
     active: currentMembership ? currentMembership.active !== false : true,
     allowedDeviceIds: currentMembership?.allowedDeviceIds || [],
+    mustChangePassword: user.mustChangePassword === true,
+    cards: normalizeCards(user.cards),
   }
 }
 
@@ -136,6 +172,20 @@ function upsertMembership(user, membership) {
   }
 
   return memberships
+}
+
+async function assertAllowedDevicesInOrganization(organizationId, allowedDeviceIds = []) {
+  for (const deviceId of uniqueStrings(allowedDeviceIds)) {
+    const device = await getDeviceById(deviceId)
+
+    if (!device) {
+      throw new Error(`DEVICE_NOT_FOUND:${deviceId}`)
+    }
+
+    if (device.organizationId !== organizationId) {
+      throw new Error(`DEVICE_OUTSIDE_ORGANIZATION:${deviceId}`)
+    }
+  }
 }
 
 async function saveMembershipPatch(userId, organizationId, membershipPatch) {
@@ -271,6 +321,7 @@ async function ensureAuthUserProfile({ authUid, email, name }) {
     authUid,
     email: email || null,
     name: name || null,
+    mustChangePassword: false,
     organizationIds: [],
     currentOrganizationId: null,
     memberships: [],
@@ -289,6 +340,8 @@ async function patchUser(uid, patch) {
 }
 
 async function patchUserAllowedDeviceIds(uid, organizationId, allowedDeviceIds) {
+  await assertAllowedDevicesInOrganization(organizationId, allowedDeviceIds)
+
   const updated = await saveMembershipPatch(uid, organizationId, {
     allowedDeviceIds,
   })
@@ -310,11 +363,19 @@ async function createUserAsAdmin(adminProfile, data) {
     throw new Error('ORGANIZATION_ACCESS_DENIED')
   }
 
+  const normalizedAllowedDeviceIds = Array.isArray(data.allowedDeviceIds)
+    ? uniqueStrings(data.allowedDeviceIds)
+    : []
+
+  await assertAllowedDevicesInOrganization(
+    targetOrganizationId,
+    normalizedAllowedDeviceIds
+  )
+
   const createdAuthUser = await auth.createUser({
     email: data.email,
     password: data.password,
     displayName: data.name || undefined,
-    disabled: data.active === false,
   })
 
   const profile = {
@@ -322,6 +383,7 @@ async function createUserAsAdmin(adminProfile, data) {
     authUid: createdAuthUser.uid,
     email: data.email,
     name: data.name || null,
+    mustChangePassword: true,
     organizationIds: [targetOrganizationId],
     currentOrganizationId: targetOrganizationId,
     memberships: [
@@ -329,12 +391,10 @@ async function createUserAsAdmin(adminProfile, data) {
         organizationId: targetOrganizationId,
         role: data.role || 'user',
         active: data.active ?? true,
-        allowedDeviceIds: Array.isArray(data.allowedDeviceIds)
-          ? data.allowedDeviceIds
-          : [],
+        allowedDeviceIds: normalizedAllowedDeviceIds,
       }),
     ],
-    cards: Array.isArray(data.cards) ? data.cards : [],
+    cards: normalizeCards(data.cards),
     sessionDurationSec: data.sessionDurationSec || 1800,
   }
 
@@ -390,13 +450,27 @@ async function patchUserAsAdmin(adminProfile, uid, patch) {
 
   if (patch.name !== undefined) globalPatch.name = patch.name
   if (patch.email !== undefined) globalPatch.email = patch.email
-  if (patch.cards !== undefined) globalPatch.cards = patch.cards
+  if (patch.cards !== undefined) globalPatch.cards = normalizeCards(patch.cards)
   if (patch.sessionDurationSec !== undefined) {
     globalPatch.sessionDurationSec = patch.sessionDurationSec
   }
 
   if (patch.role !== undefined) membershipPatch.role = patch.role
   if (patch.active !== undefined) membershipPatch.active = patch.active
+
+  if (patch.name !== undefined || patch.email !== undefined) {
+    const authPatch = {}
+
+    if (patch.name !== undefined) {
+      authPatch.displayName = patch.name || null
+    }
+
+    if (patch.email !== undefined) {
+      authPatch.email = patch.email
+    }
+
+    await auth.updateUser(uid, authPatch)
+  }
 
   if (Object.keys(globalPatch).length > 0) {
     await updateUserById(uid, globalPatch)
@@ -419,6 +493,100 @@ async function patchUserAsAdmin(adminProfile, uid, patch) {
   }
 }
 
+async function patchUserCardsAsOperations(profile, uid, cards) {
+  const check = await assertSameOrganization(profile, uid)
+  if (!check.allowed) {
+    return check
+  }
+
+  const updated = await updateUserById(uid, {
+    cards: normalizeCards(cards),
+  })
+
+  return {
+    allowed: true,
+    reason: null,
+    user: normalizeUserProfile(updated, check.organizationId),
+  }
+}
+
+async function listRfidCardsForOrganization(organizationId, limit = 200) {
+  const users = await listUsersByOrganization(organizationId, limit)
+  const items = []
+
+  users.forEach((user) => {
+    const normalizedUser = normalizeUserProfile(user, organizationId)
+    const cards = normalizeCards(user.cards)
+
+    cards.forEach((card, index) => {
+      items.push({
+        id: `${normalizedUser.userId || normalizedUser.id}-${card.uid}-${index}`,
+        uid: card.uid,
+        status: card.status,
+        userId: normalizedUser.userId || normalizedUser.id,
+        authUid: normalizedUser.authUid || normalizedUser.userId || normalizedUser.id,
+        userName: normalizedUser.name || normalizedUser.email || 'Unnamed User',
+        email: normalizedUser.email || '',
+        role: normalizedUser.role || 'user',
+        active: normalizedUser.active !== false,
+      })
+    })
+  })
+
+  return items.sort((a, b) => String(a.uid).localeCompare(String(b.uid)))
+}
+
+async function patchRfidCardStatusForOrganization(
+  profile,
+  userId,
+  cardUid,
+  status
+) {
+  const check = await assertSameOrganization(profile, userId)
+  if (!check.allowed) {
+    return check
+  }
+
+  const nextStatus = String(status || '').toLowerCase()
+  if (nextStatus !== 'active' && nextStatus !== 'blocked') {
+    throw new Error('INVALID_CARD_STATUS')
+  }
+
+  const normalizedCardUid = String(cardUid || '')
+    .replace(/[^a-fA-F0-9]/g, '')
+    .toUpperCase()
+
+  const currentCards = normalizeCards(check.user.cards)
+  const cardExists = currentCards.some((card) => card.uid === normalizedCardUid)
+
+  if (!cardExists) {
+    return {
+      allowed: false,
+      reason: 'CARD_NOT_FOUND',
+      user: check.user,
+    }
+  }
+
+  const updatedCards = currentCards.map((card) =>
+    card.uid === normalizedCardUid
+      ? {
+          ...card,
+          status: nextStatus,
+        }
+      : card
+  )
+
+  const updated = await updateUserById(userId, {
+    cards: updatedCards,
+  })
+
+  return {
+    allowed: true,
+    reason: null,
+    user: normalizeUserProfile(updated, check.organizationId),
+  }
+}
+
 async function patchUserAllowedDeviceIdsAsAdmin(
   adminProfile,
   uid,
@@ -428,6 +596,11 @@ async function patchUserAllowedDeviceIdsAsAdmin(
   if (!check.allowed) {
     return check
   }
+
+  await assertAllowedDevicesInOrganization(
+    check.organizationId,
+    allowedDeviceIds
+  )
 
   const updated = await saveMembershipPatch(uid, check.organizationId, {
     allowedDeviceIds,
@@ -476,15 +649,29 @@ async function removeUser(uid) {
   return true
 }
 
+async function clearMustChangePassword(authUid) {
+  const user = await getUserByAuthUid(authUid)
+  if (!user) return null
+
+  const updated = await updateUserById(user.userId || user.id || authUid, {
+    mustChangePassword: false,
+  })
+
+  return normalizeUserProfile(updated)
+}
+
 module.exports = {
   getAccessibleOrganizationIds,
   getMembershipForOrganization,
   normalizeUserProfile,
   patchCurrentOrganization,
   getUsersForOrganization,
+  listRfidCardsForOrganization,
   createUserAsAdmin,
   patchUserAsAdmin,
+  patchUserCardsAsOperations,
   patchUserAllowedDeviceIdsAsAdmin,
+  patchRfidCardStatusForOrganization,
   removeUserAsAdmin,
   getUsers,
   seedUsers,
@@ -493,6 +680,7 @@ module.exports = {
   findActiveUserByUidForOrganization,
   findUserByAuthUid,
   ensureAuthUserProfile,
+  clearMustChangePassword,
   patchUser,
   patchUserAllowedDeviceIds,
   removeUser,

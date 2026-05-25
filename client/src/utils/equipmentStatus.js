@@ -16,6 +16,18 @@ function parseBooleanLike(value) {
   return null;
 }
 
+function toMillis(value) {
+  if (!value) return null;
+  if (typeof value === "number") return value;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value?._seconds === "number") {
+    return value._seconds * 1000 + Math.floor((value._nanoseconds || 0) / 1000000);
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 function normalizeMode(value) {
   const normalized = String(value || "").trim();
   return normalized ? normalized.toUpperCase() : null;
@@ -63,14 +75,19 @@ export function getConnectivitySnapshot(entity = {}) {
   )
     .trim()
     .toLowerCase();
+  const lastSeenAt = toMillis(connectivity.lastSeenAt ?? entity?.lastSeenAt ?? null);
+  const staleAfterMs = 120000;
+  const isStale = !lastSeenAt || Date.now() - lastSeenAt > staleAfterMs;
 
   return {
     mode,
     wifi,
     mqtt,
-    online,
+    online: isStale ? false : online,
     reportedStatus,
-    status: derivedStatus || "offline",
+    status: isStale && entity?.active !== false ? "offline" : (derivedStatus || "offline"),
+    lastSeenAt,
+    isStale,
   };
 }
 

@@ -10,6 +10,7 @@ const {
 } = require('./boxes.store.firestore')
 const { getDeviceById } = require('../../devices/fan-1/devices.store.firestore')
 const { getAccessibleOrganizationIds } = require('../../users/users.service')
+const { applyConnectivityFreshness } = require('../../../shared/connectivity-state')
 
 function publishAuthResult(boxId, payload) {
   const {
@@ -99,15 +100,18 @@ async function addBox(userProfile, data) {
 }
 
 async function getBoxesForOrganization(organizationId, limit = 50) {
-  return listBoxesByOrganization(organizationId, limit)
+  const items = await listBoxesByOrganization(organizationId, limit)
+  return items.map((item) => applyConnectivityFreshness(item))
 }
 
 async function getBoxes(limit = 50) {
-  return listBoxes(limit)
+  const items = await listBoxes(limit)
+  return items.map((item) => applyConnectivityFreshness(item))
 }
 
 async function getBox(boxId) {
-  return getBoxById(boxId)
+  const item = await getBoxById(boxId)
+  return item ? applyConnectivityFreshness(item) : null
 }
 
 async function patchBox(userProfile, boxId, patch) {
@@ -125,7 +129,8 @@ async function patchBox(userProfile, boxId, patch) {
     )
   }
 
-  return updateBoxById(boxId, patch)
+  const updated = await updateBoxById(boxId, patch)
+  return updated ? applyConnectivityFreshness(updated) : null
 }
 
 async function removeBox(userProfile, boxId) {

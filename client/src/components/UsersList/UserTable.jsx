@@ -9,7 +9,7 @@ function getUserId(user) {
 }
 
 function getActiveRfid(user) {
-  return getPreferredCardUid(user) || "—";
+  return getPreferredCardUid(user) || "-";
 }
 
 function formatSessionLimit(user) {
@@ -54,7 +54,6 @@ function getAllowedEquipmentNames(user, deviceMap) {
 
   return allowedDeviceIds.map((deviceId) => {
     const device = deviceMap.get(deviceId);
-
     return device?.name || device?.deviceId || deviceId;
   });
 }
@@ -62,6 +61,7 @@ function getAllowedEquipmentNames(user, deviceMap) {
 function mapUserForRow(user, deviceMap) {
   return {
     id: getUserId(user),
+    raw: user,
     name: user.name || user.email || "Unnamed User",
     role: formatRoleLabel(user.role),
     rfid: getActiveRfid(user),
@@ -76,6 +76,7 @@ export default function UserTable({
   users = [],
   devices = [],
   loading = false,
+  onEditUser,
   onDeleteUser,
 }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -86,7 +87,6 @@ export default function UserTable({
   }, [activeTab, users.length]);
 
   const deviceMap = useMemo(() => buildDeviceMaps(devices), [devices]);
-
   const rows = useMemo(
     () => users.map((user) => mapUserForRow(user, deviceMap)),
     [users, deviceMap]
@@ -164,6 +164,7 @@ export default function UserTable({
                   <UserRow
                     key={user.id}
                     {...user}
+                    onEdit={() => onEditUser?.(user.raw)}
                     onDelete={() => setConfirmDelete(user.id)}
                   />
                 ))}
@@ -173,11 +174,7 @@ export default function UserTable({
       </SurfaceCard>
 
       {!loading && filteredUsers.length > 0 && (
-        <Pagination
-          page={page}
-          setPage={setPage}
-          totalPages={totalPages}
-        />
+        <Pagination page={page} setPage={setPage} totalPages={totalPages} />
       )}
 
       {confirmDelete && (
@@ -195,14 +192,14 @@ export default function UserTable({
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="rounded-lg cursor-pointer bg-slate-100 px-4 py-2 text-slate-600 transition hover:bg-slate-200"
+                className="cursor-pointer rounded-lg bg-slate-100 px-4 py-2 text-slate-600 transition hover:bg-slate-200"
               >
                 Cancel
               </button>
 
               <button
                 onClick={handleDelete}
-                className="rounded-lg cursor-pointer bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
+                className="cursor-pointer rounded-lg bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
               >
                 Delete
               </button>

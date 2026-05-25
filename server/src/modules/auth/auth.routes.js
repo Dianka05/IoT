@@ -1,4 +1,5 @@
 const express = require('express')
+const { Errors } = require('ds-express-errors')
 const { requireAuth } = require('./auth.middleware')
 const {
   COOKIE_NAME,
@@ -7,6 +8,7 @@ const {
   loginUser,
   createSessionCookie,
   getMeFromAuthUid,
+  changePasswordForAuthUser,
 } = require('./auth.service')
 const { sendSuccessResponse } = require('../../responses/default.response')
 
@@ -198,6 +200,29 @@ router.get('/auth/me', requireAuth, async (req, res, next) => {
           email: req.auth.email || null,
           emailVerified: req.auth.email_verified || false,
         },
+        profile,
+      },
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/auth/change-password', requireAuth, async (req, res, next) => {
+  try {
+    const { password } = req.body || {}
+
+    if (!password || typeof password !== 'string' || password.trim().length < 6) {
+      return next(Errors.BadRequest('`password` must be a string with at least 6 characters'))
+    }
+
+    const profile = await changePasswordForAuthUser(
+      req.auth.uid,
+      password.trim()
+    )
+
+    sendSuccessResponse(res, {
+      item: {
         profile,
       },
     })

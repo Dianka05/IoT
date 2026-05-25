@@ -68,12 +68,14 @@ function mapLogStatus(log) {
 
 function mapLogItem(log) {
   const payload = log.payload || {};
+  const rfidUid = payload.uid || log.uid || "";
 
   return {
     id: log.id,
     timestamp: formatTimestamp(log.createdAt || log.updatedAt),
     eventType: startCase(log.type || log.level || "system_event"),
     user: log.userName || log.userId || payload.uid || log.uid || "System",
+    rfidUid,
     equipment: payload.boxId || log.boxId || "System",
     action: log.message || startCase(payload.type || "system activity"),
     status: mapLogStatus(log),

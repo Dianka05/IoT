@@ -12,6 +12,7 @@ const {
   updateDeviceById,
 } = require('../devices/fan-1/devices.store.firestore')
 const { deriveConnectivityState } = require('../../shared/connectivity-state')
+const { FieldValue } = require('../../integrations/firebase/firebase.client')
 
 async function resolveActivityOrganizationId(type, entityId) {
   if (type === 'box') {
@@ -42,7 +43,11 @@ async function recordBoxStatus(boxId, payload) {
 
     await updateBoxById(boxId, {
       status: snapshot.status,
-      connectivity: snapshot.connectivity,
+      lastSeenAt: FieldValue.serverTimestamp(),
+      connectivity: {
+        ...snapshot.connectivity,
+        lastSeenAt: FieldValue.serverTimestamp(),
+      },
       lastStatusPayload: payload,
     })
   }
@@ -75,7 +80,11 @@ async function recordDeviceStatus(deviceId, payload) {
 
     await updateDeviceById(deviceId, {
       status: snapshot.status,
-      connectivity: snapshot.connectivity,
+      lastSeenAt: FieldValue.serverTimestamp(),
+      connectivity: {
+        ...snapshot.connectivity,
+        lastSeenAt: FieldValue.serverTimestamp(),
+      },
       lastStatusPayload: payload,
     })
   }

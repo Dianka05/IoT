@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { Errors } = require('ds-express-errors')
 const { requireAuth } = require('../auth/auth.middleware')
-const { requireAdmin } = require('../auth/role.middleware')
+const { requireAdmin, requireOperationsRole } = require('../auth/role.middleware')
 
 const {
   getUsers,
@@ -12,9 +12,12 @@ const {
   patchUserAllowedDeviceIds,
   removeUser,
   getUsersForOrganization,
+  listRfidCardsForOrganization,
   createUserAsAdmin,
   patchUserAsAdmin,
+  patchUserCardsAsOperations,
   patchUserAllowedDeviceIdsAsAdmin,
+  patchRfidCardStatusForOrganization,
   removeUserAsAdmin,
 } = require('./users.service')
 const { sendSuccessResponse } = require('../../responses/default.response')
@@ -141,6 +144,34 @@ router.post('/users', requireAuth, requireAdmin, async (req, res, next) => {
       return next(Errors.Forbidden('Cannot create user in another organization'))
     }
 
+    if (String(err.message || '').startsWith('DEVICE_NOT_FOUND:')) {
+      return next(Errors.BadRequest('One or more selected devices were not found'))
+    }
+
+    if (String(err.message || '').startsWith('DEVICE_OUTSIDE_ORGANIZATION:')) {
+      return next(Errors.BadRequest('Selected devices must belong to the current organization'))
+    }
+
+    next(err)
+  }
+})
+
+router.get('/rfid-cards', requireAuth, requireOperationsRole, async (req, res, next) => {
+  try {
+    const parsedLimit = Number(req.query.limit || 300)
+    const limit = Number.isNaN(parsedLimit) ? 300 : parsedLimit
+
+    const items = await listRfidCardsForOrganization(
+      req.userProfile.currentOrganizationId,
+      limit
+    )
+
+    res.json({
+      success: true,
+      items,
+      count: items.length,
+    })
+  } catch (err) {
     next(err)
   }
 })
@@ -184,6 +215,14 @@ router.get('/users/by-uid/:uid', async (req, res, next) => {
 
     sendSuccessResponse(res, item)
   } catch (err) {
+    if (String(err.message || '').startsWith('DEVICE_NOT_FOUND:')) {
+      return next(Errors.BadRequest('One or more selected devices were not found'))
+    }
+
+    if (String(err.message || '').startsWith('DEVICE_OUTSIDE_ORGANIZATION:')) {
+      return next(Errors.BadRequest('Selected devices must belong to the current organization'))
+    }
+
     next(err)
   }
 })
@@ -262,6 +301,38 @@ router.patch('/users/:uid', requireAuth, requireAdmin, async (req, res, next) =>
     }
 
     const result = await patchUserAsAdmin(req.userProfile, uid, patch)
+
+    if (result.reason === 'USER_NOT_FOUND') {
+      return next(Errors.NotFound('User not found'))
+    }
+
+    if (result.reason === 'DIFFERENT_ORGANIZATION') {
+      return next(Errors.Forbidden('Cannot modify user from another organization'))
+    }
+
+    if (!result.allowed) {
+      return next(Errors.Forbidden(result.reason || 'Operation forbidden'))
+    }
+
+    res.json({
+      success: true,
+      item: result.user,
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.patch('/users/:uid/cards', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const { uid } = req.params
+    const { cards } = req.body || {}
+
+    if (!Array.isArray(cards)) {
+      return next(Errors.BadRequest('`cards` must be an array'))
+    }
+
+    const result = await patchUserCardsAsOperations(req.userProfile, uid, cards)
 
     if (result.reason === 'USER_NOT_FOUND') {
       return next(Errors.NotFound('User not found'))
@@ -364,6 +435,55 @@ router.patch('/users/:uid/allowedDeviceIds', requireAuth, requireAdmin, async (r
       item: result.user,
     })
   } catch (err) {
+    next(err)
+  }
+})
+
+router.patch('/rfid-cards/:cardUid/status', requireAuth, requireOperationsRole, async (req, res, next) => {
+  try {
+    const { cardUid } = req.params
+    const { userId, status } = req.body || {}
+
+    if (!userId || typeof userId !== 'string') {
+      return next(Errors.BadRequest('`userId` must be a non-empty string'))
+    }
+
+    if (!status || typeof status !== 'string') {
+      return next(Errors.BadRequest('`status` must be a non-empty string'))
+    }
+
+    const result = await patchRfidCardStatusForOrganization(
+      req.userProfile,
+      userId,
+      cardUid,
+      status
+    )
+
+    if (result.reason === 'USER_NOT_FOUND') {
+      return next(Errors.NotFound('User not found'))
+    }
+
+    if (result.reason === 'DIFFERENT_ORGANIZATION') {
+      return next(Errors.Forbidden('Cannot modify user from another organization'))
+    }
+
+    if (result.reason === 'CARD_NOT_FOUND') {
+      return next(Errors.NotFound('Card not found'))
+    }
+
+    if (!result.allowed) {
+      return next(Errors.Forbidden(result.reason || 'Operation forbidden'))
+    }
+
+    res.json({
+      success: true,
+      item: result.user,
+    })
+  } catch (err) {
+    if (err.message === 'INVALID_CARD_STATUS') {
+      return next(Errors.BadRequest('Card status must be `active` or `blocked`'))
+    }
+
     next(err)
   }
 })

@@ -27,8 +27,15 @@ export default function LoginForm() {
         alert("Login successful!");
         const currentUser = await refreshAuth();
         const nextProfile = currentUser?.profile || null;
+        const mustChangePassword = nextProfile?.mustChangePassword === true;
         const hasCurrentOrganization = Boolean(nextProfile?.currentOrganizationId);
-        navigate(hasCurrentOrganization ? "/dashboard" : "/create-organization");
+        navigate(
+          mustChangePassword
+            ? "/change-password"
+            : hasCurrentOrganization
+              ? "/dashboard"
+              : "/create-organization"
+        );
       } else {
         alert(result.error?.message || "Login failed");
       }

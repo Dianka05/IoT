@@ -1,5 +1,7 @@
+import { Link } from "react-router-dom";
+
 export default function TableRow({ log }) {
-  const { timestamp, eventType, user, equipment, action, status } = log;
+  const { timestamp, eventType, user, rfidUid, equipment, action, status } = log;
 
   const statusColor = {
     SUCCESS: "text-green-700 bg-green-100",
@@ -22,7 +24,19 @@ export default function TableRow({ log }) {
       <td className="px-6 py-4 text-sm text-slate-700">{eventType}</td>
 
       <td className={`px-6 py-4 text-sm ${criticalText || "text-slate-700"}`}>
-        {user}
+        {rfidUid ? (
+          <div className="space-y-1">
+            <div>{user}</div>
+            <Link
+              to={`/rfid-auth?uid=${encodeURIComponent(rfidUid)}`}
+              className="inline-flex text-xs font-semibold text-orange-500 transition hover:text-orange-600"
+            >
+              RFID {rfidUid}
+            </Link>
+          </div>
+        ) : (
+          user
+        )}
       </td>
 
       <td className="px-6 py-4 text-sm text-slate-700">{equipment}</td>

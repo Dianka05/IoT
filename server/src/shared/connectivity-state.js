@@ -17,6 +17,18 @@ function parseBooleanLike(value) {
   return null
 }
 
+function getTimestampMillis(value) {
+  if (!value) return null
+  if (typeof value === 'number') return value
+  if (value instanceof Date) return value.getTime()
+  if (typeof value?._seconds === 'number') {
+    return value._seconds * 1000 + Math.floor((value._nanoseconds || 0) / 1000000)
+  }
+
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
 function normalizeMode(value) {
   const normalized = String(value || '').trim()
   return normalized ? normalized.toUpperCase() : null
@@ -79,7 +91,41 @@ function deriveConnectivityState(payload = {}, entity = {}) {
   }
 }
 
+function applyConnectivityFreshness(entity = {}, nowMs = Date.now()) {
+  const staleAfterMs = Number(process.env.CONNECTIVITY_STALE_AFTER_MS || 120000)
+  const snapshot = entity.connectivity || {}
+  const lastSeenAt = getTimestampMillis(snapshot.lastSeenAt || entity.lastSeenAt || null)
+  const active = entity.active !== false
+
+  if (!active) {
+    return {
+      ...entity,
+      status: 'disabled',
+      connectivity: {
+        ...snapshot,
+        online: false,
+      },
+    }
+  }
+
+  const isStale = !lastSeenAt || nowMs - lastSeenAt > staleAfterMs
+  if (!isStale) {
+    return entity
+  }
+
+  return {
+    ...entity,
+    status: 'offline',
+    connectivity: {
+      ...snapshot,
+      online: false,
+    },
+  }
+}
+
 module.exports = {
   parseBooleanLike,
   deriveConnectivityState,
+  getTimestampMillis,
+  applyConnectivityFreshness,
 }

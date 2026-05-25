@@ -9,6 +9,7 @@ const {
 } = require('./devices.store.firestore')
 const { getBoxById } = require('../../boxes/main-box/boxes.store.firestore')
 const { getAccessibleOrganizationIds } = require('../../users/users.service')
+const { applyConnectivityFreshness } = require('../../../shared/connectivity-state')
 
 function resolveTargetOrganizationId(userProfile, requestedOrganizationId = null) {
   if (requestedOrganizationId) {
@@ -62,15 +63,18 @@ async function addDevice(userProfile, data) {
 }
 
 async function getDevicesForOrganization(organizationId, limit = 50) {
-  return listDevicesByOrganization(organizationId, limit)
+  const items = await listDevicesByOrganization(organizationId, limit)
+  return items.map((item) => applyConnectivityFreshness(item))
 }
 
 async function getDevices(limit = 50) {
-  return listDevices(limit)
+  const items = await listDevices(limit)
+  return items.map((item) => applyConnectivityFreshness(item))
 }
 
 async function getDevice(deviceId) {
-  return getDeviceById(deviceId)
+  const item = await getDeviceById(deviceId)
+  return item ? applyConnectivityFreshness(item) : null
 }
 
 async function patchDevice(userProfile, deviceId, patch) {
@@ -85,7 +89,8 @@ async function patchDevice(userProfile, deviceId, patch) {
     await assertBoxBelongsToOrganization(patch.boxId, current.organizationId)
   }
 
-  return updateDeviceById(deviceId, patch)
+  const updated = await updateDeviceById(deviceId, patch)
+  return updated ? applyConnectivityFreshness(updated) : null
 }
 
 async function removeDevice(userProfile, deviceId) {
