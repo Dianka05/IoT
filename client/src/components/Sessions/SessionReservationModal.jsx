@@ -56,6 +56,14 @@ export default function SessionReservationModal({
     () => devices.filter((device) => (device.boxId || "") === boxId),
     [devices, boxId]
   );
+  const freeDevices = useMemo(
+    () =>
+      availableDevices.filter((device) => {
+        const status = String(device.occupancy?.status || "").toLowerCase();
+        return status !== "pending" && status !== "active";
+      }),
+    [availableDevices]
+  );
 
   if (!open) {
     return null;
@@ -152,8 +160,9 @@ export default function SessionReservationModal({
               ) : availableDevices.length === 0 ? (
                 <p className="text-sm text-slate-500">No reservable devices in this box.</p>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {availableDevices.map((device) => {
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                  {freeDevices.map((device) => {
                     const deviceId = device.deviceId || device.id;
                     const selected = deviceIds.includes(deviceId);
 
@@ -172,6 +181,40 @@ export default function SessionReservationModal({
                       </button>
                     );
                   })}
+                  </div>
+
+                  {availableDevices.some((device) => {
+                    const status = String(device.occupancy?.status || "").toLowerCase();
+                    return status === "pending" || status === "active";
+                  }) && (
+                    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs font-black uppercase tracking-[0.15em] text-slate-400">
+                        Unavailable right now
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableDevices
+                          .filter((device) => {
+                            const status = String(device.occupancy?.status || "").toLowerCase();
+                            return status === "pending" || status === "active";
+                          })
+                          .map((device) => {
+                            const deviceId = device.deviceId || device.id;
+                            const occupancyUserName =
+                              device.occupancy?.userName || device.occupancy?.userId || "another user";
+                            const occupancyStatus = String(device.occupancy?.status || "").toLowerCase();
+
+                            return (
+                              <span
+                                key={deviceId}
+                                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500"
+                              >
+                                {device.name || deviceId} | {occupancyStatus === "active" ? `in use by ${occupancyUserName}` : `reserved by ${occupancyUserName}`}
+                              </span>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

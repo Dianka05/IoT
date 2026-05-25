@@ -13,8 +13,8 @@ export default function ListEquipment({
 
   if (!permissions.length) {
     return (
-      <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-sm">
-        <h3 className="text-lg font-black text-slate-800 mb-2">
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h3 className="mb-2 text-lg font-black text-slate-800">
           No equipment available
         </h3>
 
@@ -26,7 +26,7 @@ export default function ListEquipment({
   }
 
   return (
-    <div className="space-y-3 relative">
+    <div className="relative space-y-3">
       {permissions.map((item) => {
         const enabled = item.access;
         const isFree = item.status === "FREE";
@@ -34,47 +34,48 @@ export default function ListEquipment({
         return (
           <SurfaceCard
             key={item.id}
-            className="
-              relative
-              p-4 md:py-6 shadow-sm
-              flex justify-between md:flex-row md:items-center md:gap-6 gap-3
-            "
+            className="relative flex justify-between gap-3 p-4 shadow-sm md:flex-row md:items-center md:gap-6 md:py-6"
           >
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center text-xs font-black text-slate-400 uppercase">
+            <div className="flex flex-shrink-0 items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-xs font-black uppercase text-slate-400">
                 {String(item.type || "D").slice(0, 1)}
               </div>
 
               <div className="flex flex-col">
-                <span className="font-bold text-slate-900 text-base">
+                <span className="text-base font-bold text-slate-900">
                   {item.name}
                 </span>
 
                 <span
-                  className={`
-                    text-xs font-semibold flex items-center gap-1
-                    ${enabled ? "text-green-600" : "text-slate-500"}
-                  `}
+                  className={`text-xs font-semibold flex items-center gap-1 ${
+                    enabled ? "text-green-600" : "text-slate-500"
+                  }`}
                 >
                   <span
-                    className={`
-                      inline-block w-2 h-2 rounded-full
-                      ${enabled ? "bg-green-500" : "bg-slate-400"}
-                    `}
+                    className={`inline-block h-2 w-2 rounded-full ${
+                      enabled ? "bg-green-500" : "bg-slate-400"
+                    }`}
                   />
                   {enabled ? "ACCESS GRANTED" : "ACCESS DENIED"}
                 </span>
 
                 {readOnly && (
-                  <span className="text-xs text-slate-400 mt-1">
-                    ID: {item.deviceId || item.id}
-                    {item.boxId ? ` · Box: ${item.boxId}` : ""}
-                  </span>
+                  <>
+                    <span className="mt-1 text-xs text-slate-400">
+                      ID: {item.deviceId || item.id}
+                      {item.boxId ? ` | Box: ${item.boxId}` : ""}
+                    </span>
+                    {item.occupancyLabel && (
+                      <span className="mt-1 text-xs font-semibold text-orange-600">
+                        {item.occupancyLabel}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </div>
 
-            <div className="flex flex-col items-start md:items-center md:flex-1 md:pr-[180px]">
+            <div className="flex flex-col items-start md:flex-1 md:items-center md:pr-[180px]">
               {readOnly ? (
                 <>
                   <label className="text-xs font-medium text-slate-500">
@@ -82,14 +83,11 @@ export default function ListEquipment({
                   </label>
 
                   <span
-                    className={`
-                      mt-1 px-3 py-1.5 rounded-lg text-xs font-black
-                      ${
-                        isFree
-                          ? "bg-green-100 text-green-700"
-                          : "bg-orange-100 text-orange-700"
-                      }
-                    `}
+                    className={`mt-1 rounded-lg px-3 py-1.5 text-xs font-black ${
+                      isFree
+                        ? "bg-green-100 text-green-700"
+                        : "bg-orange-100 text-orange-700"
+                    }`}
                   >
                     {item.status || "UNKNOWN"}
                   </span>
@@ -104,27 +102,19 @@ export default function ListEquipment({
                     type="number"
                     value={item.sessionLimit}
                     onChange={(e) => onLimitChange(item.id, e.target.value)}
-                    className="
-                      mt-1 w-24 px-3 py-1.5 rounded-lg border border-slate-300
-                      text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                    "
+                    className="mt-1 w-24 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                   />
                 </>
               )}
             </div>
 
             {!readOnly && (
-              <div
-                className="
-                  flex items-center gap-4 justify-end
-                  md:justify-normal md:absolute md:right-4 md:top-1/2 md:-translate-y-1/2
-                "
-              >
-                <span className="text-sm font-semibold text-black whitespace-nowrap hidden md:inline">
+              <div className="flex items-center justify-end gap-4 md:absolute md:right-4 md:top-1/2 md:-translate-y-1/2 md:justify-normal">
+                <span className="hidden whitespace-nowrap text-sm font-semibold text-black md:inline">
                   {enabled ? "Disapprove" : "Approve"}
                 </span>
 
-                <label className="flex items-center cursor-pointer select-none hover:opacity-80 transition">
+                <label className="flex cursor-pointer items-center select-none transition hover:opacity-80">
                   <div className="relative">
                     <input
                       type="checkbox"
@@ -133,51 +123,29 @@ export default function ListEquipment({
                       className="peer sr-only"
                     />
 
-                    <div
-                      className="
-                        w-12 h-6 rounded-full transition
-                        peer-checked:bg-green-500 bg-slate-300
-                      "
-                    />
+                    <div className="h-6 w-12 rounded-full bg-slate-300 transition peer-checked:bg-green-500" />
 
-                    <div
-                      className="
-                        absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow
-                        transition peer-checked:translate-x-6
-                      "
-                    />
+                    <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-6" />
                   </div>
                 </label>
 
                 <div
-                  className="
-                    text-slate-600 hover:text-slate-900 cursor-pointer
-                    p-2 rounded-lg hover:bg-slate-100 transition
-                  "
+                  className="cursor-pointer rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                   onClick={() =>
                     setOpenMenuId(openMenuId === item.id ? null : item.id)
                   }
                 >
-                  ⋮
+                  ...
                 </div>
 
                 {openMenuId === item.id && (
-                  <div
-                    className="
-                      absolute right-2 top-20 md:top-8
-                      bg-white border border-slate-200 shadow-lg rounded-lg
-                      py-1 w-40 z-[9999] animate-fadeIn
-                    "
-                  >
+                  <div className="absolute right-2 top-20 z-[9999] w-40 animate-fadeIn rounded-lg border border-slate-200 bg-white py-1 shadow-lg md:top-8">
                     <button
                       onClick={() => {
                         setDeleteItem(item);
                         setOpenMenuId(null);
                       }}
-                      className="
-                        flex items-center gap-2 px-4 py-2 text-red-600
-                        hover:bg-red-50 w-full text-left transition
-                      "
+                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-red-600 transition hover:bg-red-50"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -205,27 +173,20 @@ export default function ListEquipment({
       })}
 
       {!readOnly && deleteItem && (
-        <div
-          className="
-            fixed inset-0 bg-black/40 flex items-center justify-center z-50
-          "
-        >
-          <div className="bg-white p-6 rounded-xl shadow-xl w-96 animate-scaleIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-96 animate-scaleIn rounded-xl bg-white p-6 shadow-xl">
             <h2 className="text-lg font-semibold text-slate-900">
               Delete this equipment permanently?
             </h2>
 
-            <p className="text-sm text-slate-600 mt-2">
+            <p className="mt-2 text-sm text-slate-600">
               This item will be removed for all users.
             </p>
 
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setDeleteItem(null)}
-                className="
-                  px-4 py-2 rounded-lg border border-slate-300
-                  hover:bg-slate-100 transition
-                "
+                className="rounded-lg border border-slate-300 px-4 py-2 transition hover:bg-slate-100"
               >
                 Cancel
               </button>
@@ -235,10 +196,7 @@ export default function ListEquipment({
                   onDelete(deleteItem.id);
                   setDeleteItem(null);
                 }}
-                className="
-                  px-4 py-2 rounded-lg bg-red-600 text-white
-                  hover:bg-red-700 transition
-                "
+                className="rounded-lg bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
               >
                 Delete
               </button>

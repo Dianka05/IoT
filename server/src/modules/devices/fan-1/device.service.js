@@ -10,6 +10,7 @@ const {
 const { getBoxById } = require('../../boxes/main-box/boxes.store.firestore')
 const { getAccessibleOrganizationIds } = require('../../users/users.service')
 const { applyConnectivityFreshness } = require('../../../shared/connectivity-state')
+const { buildOccupancyMaps } = require('../../../shared/session-occupancy')
 
 function resolveTargetOrganizationId(userProfile, requestedOrganizationId = null) {
   if (requestedOrganizationId) {
@@ -64,7 +65,15 @@ async function addDevice(userProfile, data) {
 
 async function getDevicesForOrganization(organizationId, limit = 50) {
   const items = await listDevicesByOrganization(organizationId, limit)
-  return items.map((item) => applyConnectivityFreshness(item))
+  const occupancy = await buildOccupancyMaps(organizationId)
+
+  return items.map((item) => {
+    const deviceId = item.deviceId || item.id
+    return applyConnectivityFreshness({
+      ...item,
+      occupancy: occupancy.byDeviceId.get(deviceId) || null,
+    })
+  })
 }
 
 async function getDevices(limit = 50) {
@@ -74,7 +83,13 @@ async function getDevices(limit = 50) {
 
 async function getDevice(deviceId) {
   const item = await getDeviceById(deviceId)
-  return item ? applyConnectivityFreshness(item) : null
+  if (!item) return null
+
+  const occupancy = await buildOccupancyMaps(item.organizationId)
+  return applyConnectivityFreshness({
+    ...item,
+    occupancy: occupancy.byDeviceId.get(deviceId) || null,
+  })
 }
 
 async function patchDevice(userProfile, deviceId, patch) {

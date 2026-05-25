@@ -14,6 +14,14 @@ const {
 const { getBoxById } = require('../boxes/main-box/boxes.store.firestore')
 const { getDeviceById } = require('../devices/fan-1/devices.store.firestore')
 
+function normalizeEntityStatus(entity = {}) {
+  if (entity?.active === false) {
+    return 'disabled'
+  }
+
+  return String(entity?.status || '').trim().toLowerCase()
+}
+
 async function handleAuthRequest(msg) {
   const { uid, boxId } = msg.payload
   const box = await getBoxById(boxId)
@@ -178,6 +186,15 @@ async function createPendingSession(data = {}) {
     throw new Error('BOX_ORGANIZATION_NOT_SET')
   }
 
+  const boxStatus = normalizeEntityStatus(box)
+  if (boxStatus === 'maintenance') {
+    throw new Error('Box is in maintenance mode')
+  }
+
+  if (boxStatus === 'offline' || boxStatus === 'disabled') {
+    throw new Error('Box is not available')
+  }
+
   const user = await findActiveUserByUidForOrganization(data.uid, organizationId)
   if (!user) {
     throw new Error('Active user not found for uid in organization')
@@ -198,6 +215,15 @@ async function createPendingSession(data = {}) {
 
     if ((device.boxId || null) !== data.boxId) {
       throw new Error(`Device does not belong to box: ${deviceId}`)
+    }
+
+    const deviceStatus = normalizeEntityStatus(device)
+    if (deviceStatus === 'maintenance') {
+      throw new Error(`Device is in maintenance mode: ${deviceId}`)
+    }
+
+    if (deviceStatus === 'offline' || deviceStatus === 'disabled') {
+      throw new Error(`Device is not available: ${deviceId}`)
     }
 
     if (!allowedDeviceIds.has(deviceId)) {

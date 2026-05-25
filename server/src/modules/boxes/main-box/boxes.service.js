@@ -11,6 +11,7 @@ const {
 const { getDeviceById } = require('../../devices/fan-1/devices.store.firestore')
 const { getAccessibleOrganizationIds } = require('../../users/users.service')
 const { applyConnectivityFreshness } = require('../../../shared/connectivity-state')
+const { buildOccupancyMaps } = require('../../../shared/session-occupancy')
 
 function publishAuthResult(boxId, payload) {
   const {
@@ -101,7 +102,15 @@ async function addBox(userProfile, data) {
 
 async function getBoxesForOrganization(organizationId, limit = 50) {
   const items = await listBoxesByOrganization(organizationId, limit)
-  return items.map((item) => applyConnectivityFreshness(item))
+  const occupancy = await buildOccupancyMaps(organizationId)
+
+  return items.map((item) => {
+    const boxId = item.boxId || item.id
+    return applyConnectivityFreshness({
+      ...item,
+      occupancy: occupancy.byBoxId.get(boxId) || null,
+    })
+  })
 }
 
 async function getBoxes(limit = 50) {
@@ -111,7 +120,13 @@ async function getBoxes(limit = 50) {
 
 async function getBox(boxId) {
   const item = await getBoxById(boxId)
-  return item ? applyConnectivityFreshness(item) : null
+  if (!item) return null
+
+  const occupancy = await buildOccupancyMaps(item.organizationId)
+  return applyConnectivityFreshness({
+    ...item,
+    occupancy: occupancy.byBoxId.get(boxId) || null,
+  })
 }
 
 async function patchBox(userProfile, boxId, patch) {

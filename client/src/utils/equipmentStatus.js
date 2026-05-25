@@ -97,7 +97,31 @@ export function getDisplayStatus(entity = {}) {
   }
 
   const snapshot = getConnectivitySnapshot(entity);
-  return snapshot.status || "offline";
+  const baseStatus = snapshot.status || "offline";
+  const occupancyStatus = String(entity?.occupancy?.status || "").toLowerCase();
+
+  if (baseStatus === "maintenance") {
+    return "maintenance";
+  }
+
+  if (
+    baseStatus === "offline" ||
+    snapshot.online === false ||
+    snapshot.wifi === false ||
+    snapshot.mqtt === false
+  ) {
+    return "offline";
+  }
+
+  if (occupancyStatus === "active") {
+    return "in_use";
+  }
+
+  if (occupancyStatus === "pending") {
+    return "reserved";
+  }
+
+  return baseStatus;
 }
 
 export function isEntityOffline(entity = {}) {

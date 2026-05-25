@@ -46,6 +46,19 @@ function normalizeDeviceStatus(device) {
 
 function mapDeviceForEquipment(device, currentUser) {
   const deviceId = getDeviceId(device);
+  const occupancyStatus = String(device?.occupancy?.status || "").toLowerCase();
+  const occupancyUserName = device?.occupancy?.userName || device?.occupancy?.userId || "";
+  const occupancyLabel = occupancyUserName
+    ? occupancyStatus === "active"
+      ? `In use by ${occupancyUserName}`
+      : occupancyStatus === "pending"
+        ? `Reserved by ${occupancyUserName}`
+        : ""
+    : occupancyStatus === "active"
+      ? "Currently in use"
+      : occupancyStatus === "pending"
+        ? "Currently reserved"
+        : "";
 
   return {
     id: deviceId,
@@ -56,6 +69,7 @@ function mapDeviceForEquipment(device, currentUser) {
     status: normalizeDeviceStatus(device),
     access: true,
     sessionLimit: Math.round((currentUser?.sessionDurationSec || 1800) / 60),
+    occupancyLabel,
     raw: device,
   };
 }
