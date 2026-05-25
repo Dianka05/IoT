@@ -6,73 +6,21 @@ const { publishAuthResult, publishEndSession } = require('./boxes.service')
 const { sendSuccessResponse } = require('../../../responses/default.response')
 const {
   addBox,
-  getBoxes,
+  getBoxesForOrganization,
   getBox,
   patchBox,
   removeBox,
 } = require('./boxes.service')
+const { requireAuth } = require('../../auth/auth.middleware')
+const {
+  requireUserProfile,
+  requireOperationsRole,
+  requireOrganizationContext,
+} = require('../../auth/role.middleware')
 
-/**
- * @swagger
- * /boxes:
- *   post:
- *     summary: Create box
- *     tags:
- *       - Boxes
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - boxId
- *               - name
- *             properties:
- *               boxId:
- *                 type: string
- *                 example: main-1
- *               name:
- *                 type: string
- *                 example: Main Box 1
- *               location:
- *                 type: string
- *                 nullable: true
- *                 example: Lab A
- *               active:
- *                 type: boolean
- *                 example: true
- *               status:
- *                 type: string
- *                 example: offline
- *               deviceIds:
- *                 type: array
- *                 items:
- *                   type: string
- *                 example: [fan-1]
- *     responses:
- *       200:
- *         description: Box created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       409:
- *         description: Box already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.post('/boxes', async (req, res, next) => {
+router.post('/boxes', requireAuth, requireUserProfile, requireOperationsRole, async (req, res, next) => {
   try {
-    const { boxId, name, location, active, status, deviceIds } = req.body || {}
+    const { boxId, name, location, active, status, deviceIds, organizationId } = req.body || {}
 
     if (!boxId || typeof boxId !== 'string') {
       return next(Errors.BadRequest('`boxId` must be a non-empty string'))
@@ -86,52 +34,51 @@ router.post('/boxes', async (req, res, next) => {
       return next(Errors.BadRequest('`deviceIds` must be an array'))
     }
 
-    const item = await addBox({
+    const item = await addBox(req.userProfile, {
       boxId,
       name,
       location,
       active,
       status,
       deviceIds,
+      organizationId,
     })
+
     sendSuccessResponse(res, item)
   } catch (err) {
     if (err.message === 'BOX_ALREADY_EXISTS') {
       return next(Errors.Conflict('Box already exists'))
     }
 
+    if (err.message === 'CURRENT_ORGANIZATION_NOT_SET') {
+      return next(Errors.Forbidden('Current organization is not set'))
+    }
+
+    if (err.message === 'ORGANIZATION_ACCESS_DENIED') {
+      return next(Errors.Forbidden('Cannot create box in this organization'))
+    }
+
+    if (String(err.message || '').startsWith('DEVICE_NOT_FOUND:')) {
+      return next(Errors.BadRequest('One or more devices were not found'))
+    }
+
+    if (String(err.message || '').startsWith('DEVICE_OUTSIDE_ORGANIZATION:')) {
+      return next(Errors.BadRequest('Device must belong to the same organization'))
+    }
+
     next(err)
   }
 })
 
-/**
- * @swagger
- * /boxes:
- *   get:
- *     summary: Get boxes
- *     tags:
- *       - Boxes
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           example: 50
- *         description: Number of boxes to return
- *     responses:
- *       200:
- *         description: Boxes fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BoxList'
- */
-router.get('/boxes', async (req, res, next) => {
+router.get('/boxes', requireAuth, requireUserProfile, requireOrganizationContext, async (req, res, next) => {
   try {
     const parsedLimit = Number(req.query.limit || 50)
     const limit = Number.isNaN(parsedLimit) ? 50 : parsedLimit
 
-    const items = await getBoxes(limit)
+    const items = await getBoxesForOrganization(
+      req.userProfile.currentOrganizationId,
+      limit
+    )
 
     sendSuccessResponse(res, {
       items,
@@ -142,40 +89,16 @@ router.get('/boxes', async (req, res, next) => {
   }
 })
 
-/**
- * @swagger
- * /boxes/{boxId}:
- *   get:
- *     summary: Get box by id
- *     tags:
- *       - Boxes
- *     parameters:
- *       - in: path
- *         name: boxId
- *         required: true
- *         schema:
- *           type: string
- *         description: Box identifier
- *     responses:
- *       200:
- *         description: Box fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Box'
- *       404:
- *         description: Box not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.get('/boxes/:boxId', async (req, res, next) => {
+router.get('/boxes/:boxId', requireAuth, requireUserProfile, requireOrganizationContext, async (req, res, next) => {
   try {
     const item = await getBox(req.params.boxId)
 
     if (!item) {
       return next(Errors.NotFound('Box not found'))
+    }
+
+    if (item.organizationId !== req.userProfile.currentOrganizationId) {
+      return next(Errors.Forbidden('Cannot access box from another organization'))
     }
 
     sendSuccessResponse(res, item)
@@ -184,61 +107,7 @@ router.get('/boxes/:boxId', async (req, res, next) => {
   }
 })
 
-/**
- * @swagger
- * /boxes/{boxId}:
- *   patch:
- *     summary: Update box
- *     tags:
- *       - Boxes
- *     parameters:
- *       - in: path
- *         name: boxId
- *         required: true
- *         schema:
- *           type: string
- *         description: Box identifier
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               location:
- *                 type: string
- *                 nullable: true
- *               active:
- *                 type: boolean
- *               status:
- *                 type: string
- *               deviceIds:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       200:
- *         description: Box updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       404:
- *         description: Box not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.patch('/boxes/:boxId', async (req, res, next) => {
+router.patch('/boxes/:boxId', requireAuth, requireUserProfile, requireOperationsRole, async (req, res, next) => {
   try {
     const { boxId } = req.params
     const { name, location, active, status, deviceIds } = req.body || {}
@@ -280,7 +149,7 @@ router.patch('/boxes/:boxId', async (req, res, next) => {
       patch.deviceIds = deviceIds
     }
 
-    const item = await patchBox(boxId, patch)
+    const item = await patchBox(req.userProfile, boxId, patch)
 
     if (!item) {
       return next(Errors.NotFound('Box not found'))
@@ -288,43 +157,27 @@ router.patch('/boxes/:boxId', async (req, res, next) => {
 
     sendSuccessResponse(res, item)
   } catch (err) {
+    if (err.message === 'ORGANIZATION_ACCESS_DENIED') {
+      return next(Errors.Forbidden('Cannot modify box from another organization'))
+    }
+
+    if (String(err.message || '').startsWith('DEVICE_NOT_FOUND:')) {
+      return next(Errors.BadRequest('One or more devices were not found'))
+    }
+
+    if (String(err.message || '').startsWith('DEVICE_OUTSIDE_ORGANIZATION:')) {
+      return next(Errors.BadRequest('Device must belong to the same organization'))
+    }
+
     next(err)
   }
 })
 
-/**
- * @swagger
- * /boxes/{boxId}:
- *   delete:
- *     summary: Delete box
- *     tags:
- *       - Boxes
- *     parameters:
- *       - in: path
- *         name: boxId
- *         required: true
- *         schema:
- *           type: string
- *         description: Box identifier
- *     responses:
- *       200:
- *         description: Box deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       404:
- *         description: Box not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.delete('/boxes/:boxId', async (req, res, next) => {
+router.delete('/boxes/:boxId', requireAuth, requireUserProfile, requireOperationsRole, async (req, res, next) => {
   try {
     const { boxId } = req.params
 
-    const deleted = await removeBox(boxId)
+    const deleted = await removeBox(req.userProfile, boxId)
 
     if (!deleted) {
       return next(Errors.NotFound('Box not found'))
@@ -335,53 +188,14 @@ router.delete('/boxes/:boxId', async (req, res, next) => {
       id: boxId,
     })
   } catch (err) {
+    if (err.message === 'ORGANIZATION_ACCESS_DENIED') {
+      return next(Errors.Forbidden('Cannot delete box from another organization'))
+    }
+
     next(err)
   }
 })
 
-
-// ------------------------------------------
-
-/**
- * @swagger
- * /boxes/{boxId}/auth-result:
- *   post:
- *     summary: Send auth result to box
- *     tags:
- *       - Boxes
- *     parameters:
- *       - in: path
- *         name: boxId
- *         required: true
- *         schema:
- *           type: string
- *         description: Box identifier
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/BoxAuthResultRequest'
- *     responses:
- *       200:
- *         description: Auth result sent successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       503:
- *         description: MQTT broker is not connected
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
 router.post('/boxes/:boxId/auth-result', (req, res, next) => {
   try {
     const { boxId } = req.params
@@ -405,7 +219,6 @@ router.post('/boxes/:boxId/auth-result', (req, res, next) => {
       }
     }
 
-
     if (!client.connected) {
       return next(Errors.ServiceUnavailable('MQTT broker is not connected'))
     }
@@ -423,70 +236,24 @@ router.post('/boxes/:boxId/auth-result', (req, res, next) => {
       reason,
     })
 
-    const info = {
-        sessionId,
-        uid,
-        allowed,
-        userId,
-        userName,
-        role,
-        deviceIds,
-        sessionDurationSec,
-        mode,
-        reason,
-      }
-
-    sendSuccessResponse(res, info)
-
-    
+    sendSuccessResponse(res, {
+      sessionId,
+      uid,
+      allowed,
+      userId,
+      userName,
+      role,
+      deviceIds,
+      sessionDurationSec,
+      mode,
+      reason,
+    })
   } catch (error) {
     next(error)
   }
 })
 
-
-/**
- * @swagger
- * /boxes/{boxId}/end-session:
- *   post:
- *     summary: End active box session
- *     tags:
- *       - Boxes
- *     parameters:
- *       - in: path
- *         name: boxId
- *         required: true
- *         schema:
- *           type: string
- *         description: Box identifier
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/BoxEndSessionRequest'
- *     responses:
- *       200:
- *         description: Session end message sent successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       503:
- *         description: MQTT broker is not connected
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
 router.post('/boxes/:boxId/end-session', (req, res, next) => {
-
   try {
     const { boxId } = req.params
     const { reason, sessionId } = req.body
@@ -496,19 +263,16 @@ router.post('/boxes/:boxId/end-session', (req, res, next) => {
     }
 
     if (!client.connected) {
-      return next(Errors.ServiceUnavailable('MQTT broker is not connected'))  
+      return next(Errors.ServiceUnavailable('MQTT broker is not connected'))
     }
 
     publishEndSession(boxId, { reason, sessionId })
 
-    const info = {
+    sendSuccessResponse(res, {
       boxId,
       reason,
-      sessionId
-    }
-
-    sendSuccessResponse(res, info)
-
+      sessionId,
+    })
   } catch (error) {
     next(error)
   }

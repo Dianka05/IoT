@@ -14,6 +14,7 @@ import { getActivities } from "../api/activities";
 import { getBoxes, getDevices } from "../api/equipment";
 import { useAuth } from "../auth/AuthContext";
 import { canUseOperationsDashboard, getDefaultRouteForRole } from "../auth/roles";
+import { getConnectivitySnapshot, getDisplayStatus } from "../utils/equipmentStatus";
 
 function getDeviceId(device) {
   return device?.deviceId || device?.id || "";
@@ -177,6 +178,9 @@ function buildMetricRows(boxActivity, deviceActivities, devicesById) {
       path.includes("temp") ||
       path.includes("humid") ||
       path.includes("status") ||
+      path.includes("mode") ||
+      path.includes("wifi") ||
+      path.includes("mqtt") ||
       path.includes("fan") ||
       path.includes("rpm") ||
       path.includes("door") ||
@@ -289,30 +293,47 @@ function findPayloadValue(payload, matchers = []) {
 
 function buildSystemIdentity(box, boxActivity, relatedDevices) {
   const payload = boxActivity?.payload || {};
+  const snapshot = getConnectivitySnapshot({
+    ...box,
+    lastStatusPayload: payload,
+  });
+  const displayStatus = getDisplayStatus({
+    ...box,
+    lastStatusPayload: payload,
+  });
   const connectionValue = findPayloadValue(payload, ["connection", "connected", "online", "network"]);
   const firmwareValue = findPayloadValue(payload, ["firmware", "version"]);
   const modelValue = findPayloadValue(payload, ["model", "hardware"]);
 
-  const isConnected = typeof connectionValue === "boolean"
-    ? connectionValue
-    : String(connectionValue || box?.status || "").toLowerCase().includes("online");
+  const isConnected = snapshot.online === false
+    ? false
+    : snapshot.online === true
+      ? true
+      : typeof connectionValue === "boolean"
+        ? connectionValue
+        : false;
 
   return [
     { label: "Box ID", value: box?.boxId || box?.id || "Unknown" },
     { label: "Location", value: box?.location || "Unknown" },
+    { label: "Status", value: startCaseLabel(displayStatus) },
     { label: "Devices", value: String(relatedDevices.length || 0) },
     { label: "Model", value: modelValue ? String(modelValue) : (box?.name || "Unknown") },
     { label: "Firmware", value: firmwareValue ? String(firmwareValue) : "Not reported" },
+    { label: "Mode", value: snapshot.mode || "Unknown" },
+    { label: "WiFi", value: snapshot.wifi === null ? "Unknown" : snapshot.wifi ? "Connected" : "Offline" },
+    { label: "MQTT", value: snapshot.mqtt === null ? "Unknown" : snapshot.mqtt ? "Connected" : "Offline" },
+    { label: "Online", value: snapshot.online === null ? "Unknown" : snapshot.online ? "Yes" : "No" },
     {
       label: "Connection",
-      value: isConnected ? "Connected" : (box?.status || "Unknown"),
+      value: isConnected ? "Connected" : "Offline",
       status: isConnected ? "active" : undefined,
     },
   ];
 }
 
 export default function EnvironmentDashboard() {
-  const { role, loading: authLoading } = useAuth();
+  const { role, loading: authLoading, currentOrganizationId } = useAuth();
   const [searchParams] = useSearchParams();
   const boxId = searchParams.get("boxId") || "";
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -325,7 +346,7 @@ export default function EnvironmentDashboard() {
   const [deviceActivities, setDeviceActivities] = useState([]);
 
   const loadEnvironment = useCallback(async (isRefresh = false) => {
-    if (!boxId) {
+    if (!boxId || !currentOrganizationId) {
       setLoading(false);
       return;
     }
@@ -381,7 +402,7 @@ export default function EnvironmentDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [boxId]);
+  }, [boxId, currentOrganizationId]);
 
   useEffect(() => {
     loadEnvironment();

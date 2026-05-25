@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { RotateCcw, Filter } from "lucide-react";
 
-const Filters = ({ onFilter, onRefresh }) => {
+const Filters = ({ onFilter, onRefresh, eventTypeOptions = [] }) => {
   const [eventType, setEventType] = useState("");
   const [user, setUser] = useState("");
   const [equipment, setEquipment] = useState("");
@@ -50,10 +50,11 @@ const Filters = ({ onFilter, onRefresh }) => {
           className="border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
         >
           <option value="">All</option>
-          <option value="Access Login">Access Login</option>
-          <option value="Intrusion Detected">Intrusion Detected</option>
-          <option value="Firmware">Firmware Update</option>
-          <option value="Connectivity">Connectivity</option>
+          {eventTypeOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
         </select>
       </div>
 

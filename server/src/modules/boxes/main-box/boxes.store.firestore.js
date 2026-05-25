@@ -37,6 +37,16 @@ async function listBoxes(limit = 50) {
   return snapshot.docs.map(mapDoc)
 }
 
+async function listBoxesByOrganization(organizationId, limit = 50) {
+  const snapshot = await db
+    .collection('boxes')
+    .where('organizationId', '==', organizationId)
+    .limit(limit)
+    .get()
+
+  return snapshot.docs.map(mapDoc)
+}
+
 async function updateBoxById(boxId, patch) {
   const docRef = db.collection('boxes').doc(boxId)
   const existing = await docRef.get()
@@ -69,6 +79,7 @@ module.exports = {
   createBox,
   getBoxById,
   listBoxes,
+  listBoxesByOrganization,
   updateBoxById,
   deleteBoxById,
 }

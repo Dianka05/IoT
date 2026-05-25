@@ -83,6 +83,16 @@ export const logout = async () => {
   }
 };
 
+export const changePassword = async (password) => {
+  const payload = await request('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  })
+  const data = unwrapData(payload)
+
+  return data?.item || null
+}
+
 export const getMe = async () => {
   return request('/auth/me')
 }

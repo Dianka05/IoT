@@ -26,6 +26,16 @@ export async function endSession(sessionId, reason = 'manual') {
   return data?.item || data || null
 }
 
+export async function createSession(body) {
+  const payload = await request('/sessions', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+
+  const data = unwrapData(payload)
+  return data?.item || data || null
+}
+
 export async function getLogs(limit = 20) {
   const payload = await request(`/logs?limit=${limit}`)
   const data = unwrapData(payload)
@@ -33,9 +43,9 @@ export async function getLogs(limit = 20) {
   return data?.items || []
 }
 
-export async function getAdminOverview() {
+export async function getAdminOverview({ includeUsers = true } = {}) {
   const [users, devices, sessions, logs, boxes] = await Promise.all([
-    getUsers(200),
+    includeUsers ? getUsers(200) : Promise.resolve([]),
     getDevices(200),
     getSessions(200),
     getLogs(20),

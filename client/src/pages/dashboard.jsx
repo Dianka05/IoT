@@ -35,6 +35,7 @@ import {
   getCurrentUserSessions,
 } from '../utils/currentUser';
 import SurfaceCard from "../components/surfaceCard";
+import { getDisplayStatus } from "../utils/equipmentStatus";
 
 const ACTIVE_SESSION_STATUSES = new Set(['pending', 'active']);
 const ALERT_TYPES = new Set(['auth_denied', 'mqtt_handler_error']);
@@ -160,13 +161,17 @@ function buildDeviceRows(devices, sessions) {
   return devices.map((device) => {
     const deviceId = device.deviceId || device.id;
     const activeSession = activeSessionByDevice.get(deviceId);
-    const rawStatus = String(device.status || '').toLowerCase();
+    const rawStatus = getDisplayStatus(device);
 
     let status = 'IDLE';
     if (activeSession) {
       status = 'IN USE';
     } else if (device.active === false || rawStatus === 'offline') {
       status = 'OFFLINE';
+    } else if (rawStatus === 'busy' || rawStatus === 'reserved' || rawStatus === 'in_use') {
+      status = 'IN USE';
+    } else if (rawStatus === 'maintenance') {
+      status = 'MAINTENANCE';
     } else if (rawStatus === 'active' || rawStatus === 'online') {
       status = 'ACTIVE';
     }
@@ -251,7 +256,13 @@ function buildCurrentUserCardData(profile, role, activeSession, deviceNameMap, w
 }
 
 const Dashboard = () => {
-  const { profile, role, loading: authLoading } = useAuth();
+  const {
+    profile,
+    role,
+    loading: authLoading,
+    currentOrganizationId,
+    currentOrganization,
+  } = useAuth();
   const isOperationsRole = canUseOperationsDashboard(role);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [devices, setDevices] = useState([]);
@@ -268,7 +279,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
-    if (authLoading) return;
+    if (authLoading || !currentOrganizationId) return;
 
     if (isRefresh) {
       setRefreshing(true);
@@ -280,7 +291,9 @@ const Dashboard = () => {
 
     try {
       if (isOperationsRole) {
-        const adminOverview = await getAdminOverview();
+        const adminOverview = await getAdminOverview({
+          includeUsers: canManageUsers(role),
+        });
         setOverview(adminOverview);
       } else {
         const [devicesList, sessionsList] = await Promise.all([
@@ -298,7 +311,7 @@ const Dashboard = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [authLoading, isOperationsRole]);
+  }, [authLoading, currentOrganizationId, isOperationsRole]);
 
   useEffect(() => {
     loadDashboard();
@@ -326,9 +339,19 @@ const Dashboard = () => {
       role,
       currentUserActiveSession,
       deviceNameMap,
-      isOperationsRole ? 'Operations workspace' : 'Personal workspace'
+      currentOrganization?.name ||
+        currentOrganizationId ||
+        (isOperationsRole ? 'Operations workspace' : 'Personal workspace')
     ),
-    [profile, role, currentUserActiveSession, deviceNameMap, isOperationsRole]
+    [
+      profile,
+      role,
+      currentUserActiveSession,
+      deviceNameMap,
+      currentOrganization,
+      currentOrganizationId,
+      isOperationsRole,
+    ]
   );
 
   const activityItems = useMemo(
@@ -345,8 +368,8 @@ const Dashboard = () => {
 
     const onlineDevices = overview.devices.filter((device) => {
       if (device.active === false) return false;
-      const status = String(device.status || '').toLowerCase();
-      return status === 'active' || status === 'online' || status === 'idle' || status === 'ready';
+      const status = getDisplayStatus(device);
+      return status !== 'offline';
     }).length;
 
     const alerts = overview.logs.filter((log) =>
@@ -418,13 +441,15 @@ const Dashboard = () => {
                     status="Live"
                     iconBg="bg-orange-50"
                   />
-                  <StatCard
-                    icon={Users}
-                    label="Registered Users"
-                    value={loading ? '...' : overview.users.length}
-                    status={loading ? '...' : `${stats.activeUsers} active`}
-                    iconBg="bg-blue-50"
-                  />
+                  {canManageUsers(role) && (
+                    <StatCard
+                      icon={Users}
+                      label="Registered Users"
+                      value={loading ? '...' : overview.users.length}
+                      status={loading ? '...' : `${stats.activeUsers} active`}
+                      iconBg="bg-blue-50"
+                    />
+                  )}
                   <StatCard
                     icon={Box}
                     label="Equipment Units"
@@ -511,6 +536,12 @@ const Dashboard = () => {
 
           <div className="max-w-5xl space-y-6 md:space-y-8">
             <SessionCard {...currentUserCardData} />
+            <section>
+              <div className="flex flex-wrap gap-4">
+                <QuickActionBtn icon={Clock} label="My Sessions" to="/sessions" />
+                <QuickActionBtn icon={Box} label="My Equipment" to="/equipment" />
+              </div>
+            </section>
             <ActivityLog items={activityItems} />
           </div>
     </PageShell>

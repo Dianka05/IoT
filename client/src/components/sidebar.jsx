@@ -1,5 +1,7 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
+  Building2,
   ChevronRight,
   Clock,
   CreditCard,
@@ -23,6 +25,7 @@ function getNavItems(role) {
     return [
       { to: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'Dashboard' },
       { to: '/equipment', icon: <Monitor size={22} />, label: 'My Equipment' },
+      { to: '/sessions', icon: <Clock size={22} />, label: 'My Sessions' },
     ];
   }
 
@@ -67,9 +70,18 @@ function NavButton({ to, icon, label }) {
   );
 }
 
-function SidebarContent({ role, userName, loading }) {
+function SidebarContent({
+  role,
+  userName,
+  loading,
+  organizations,
+  currentOrganizationId,
+  onSwitchOrganization,
+  switchingOrganization,
+}) {
   const roleLabel = getRoleLabel(role, loading);
   const navItems = getNavItems(role);
+  const canCreateOrganization = role === 'admin';
 
   return (
     <div className="flex flex-col h-full">
@@ -93,6 +105,43 @@ function SidebarContent({ role, userName, loading }) {
           </div>
         </div>
       </div>
+
+      {organizations.length > 0 && (
+        <div className="px-4 pb-4">
+          <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-4">
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+              <Building2 size={14} />
+              Current Organization
+            </div>
+
+            <select
+              value={currentOrganizationId || ''}
+              onChange={(event) => onSwitchOrganization?.(event.target.value)}
+              disabled={switchingOrganization}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {organizations.map((organization) => {
+                const organizationId = organization.organizationId || organization.id;
+
+                return (
+                  <option key={organizationId} value={organizationId}>
+                    {organization.name || organizationId}
+                  </option>
+                );
+              })}
+            </select>
+
+            {canCreateOrganization && (
+              <NavLink
+                to="/create-organization"
+                className="mt-3 inline-flex text-xs font-semibold text-orange-500 transition hover:text-orange-600"
+              >
+                Create organization
+              </NavLink>
+            )}
+          </div>
+        </div>
+      )}
 
       <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
         {navItems.map((item) => (
@@ -120,14 +169,50 @@ function SidebarContent({ role, userName, loading }) {
 }
 
 export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: userNameProp }) {
-  const { profile, role: authRole, loading } = useAuth();
+  const navigate = useNavigate();
+  const [switchingOrganization, setSwitchingOrganization] = useState(false);
+  const {
+    profile,
+    role: authRole,
+    loading,
+    organizations,
+    currentOrganizationId,
+    setCurrentOrganization,
+  } = useAuth();
   const role = roleProp || profile?.role || authRole || null;
   const userName = userNameProp || profile?.name || profile?.email || 'Loading';
+
+  const handleSwitchOrganization = async (organizationId) => {
+    if (!organizationId || organizationId === currentOrganizationId) {
+      return;
+    }
+
+    setSwitchingOrganization(true);
+
+    try {
+      await setCurrentOrganization(organizationId);
+      setIsOpen(false);
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Failed to switch organization:', err);
+      alert(err.message || 'Failed to switch organization');
+    } finally {
+      setSwitchingOrganization(false);
+    }
+  };
 
   return (
     <>
       <aside className="hidden md:flex w-72 bg-white border-r border-slate-100 flex-col min-h-screen">
-        <SidebarContent role={role} userName={userName} loading={loading} />
+        <SidebarContent
+          role={role}
+          userName={userName}
+          loading={loading}
+          organizations={organizations}
+          currentOrganizationId={currentOrganizationId}
+          onSwitchOrganization={handleSwitchOrganization}
+          switchingOrganization={switchingOrganization}
+        />
       </aside>
 
       <div
@@ -146,7 +231,15 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        <SidebarContent role={role} userName={userName} loading={loading} />
+        <SidebarContent
+          role={role}
+          userName={userName}
+          loading={loading}
+          organizations={organizations}
+          currentOrganizationId={currentOrganizationId}
+          onSwitchOrganization={handleSwitchOrganization}
+          switchingOrganization={switchingOrganization}
+        />
       </aside>
     </>
   );

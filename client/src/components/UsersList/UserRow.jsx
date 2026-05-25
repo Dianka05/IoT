@@ -1,4 +1,4 @@
-import { Users, Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Users } from "lucide-react";
 
 const UserRow = ({
   name,
@@ -7,6 +7,7 @@ const UserRow = ({
   equipment = [],
   limit,
   status,
+  onEdit,
   onDelete,
 }) => {
   const roleColors = {
@@ -15,26 +16,22 @@ const UserRow = ({
     User: "bg-slate-200 text-slate-700",
   };
 
-  const equipmentText = equipment.length > 0
-    ? equipment.join(", ")
-    : "No equipment";
+  const equipmentText = equipment.length > 0 ? equipment.join(", ") : "No equipment";
 
   return (
-    <tr className="hover:bg-slate-50/50 transition-all cursor-pointer">
-      <td className="px-6 py-4 flex items-center gap-3">
-        <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
+    <tr className="cursor-pointer transition-all hover:bg-slate-50/50">
+      <td className="flex items-center gap-3 px-6 py-4">
+        <div className="rounded-lg bg-slate-100 p-2 text-slate-500">
           <Users size={18} />
         </div>
 
-        <span className="font-bold text-slate-700 text-[15px]">
-          {name}
-        </span>
+        <span className="text-[15px] font-bold text-slate-700">{name}</span>
       </td>
 
       <td className="px-6 py-4">
         <span
           className={`
-            px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide
+            rounded-lg px-3 py-1 text-[11px] font-bold uppercase tracking-wide
             transition hover:brightness-110
             ${roleColors[role] || "bg-slate-200 text-slate-700"}
           `}
@@ -43,22 +40,22 @@ const UserRow = ({
         </span>
       </td>
 
-      <td className="px-6 py-4 text-[14px] whitespace-nowrap text-slate-600 font-medium">
-        {rfid || "—"}
+      <td className="whitespace-nowrap px-6 py-4 text-[14px] font-medium text-slate-600">
+        {rfid || "-"}
       </td>
 
-      <td className="px-6 py-4 text-[14px] text-slate-600 font-medium max-w-[300px] truncate">
+      <td className="max-w-[300px] truncate px-6 py-4 text-[14px] font-medium text-slate-600">
         {equipmentText}
       </td>
 
-      <td className="px-6 py-4 text-[14px] text-slate-600 font-medium">
+      <td className="px-6 py-4 text-[14px] font-medium text-slate-600">
         {limit || "Default"}
       </td>
 
       <td className="px-6 py-4">
         <span
           className={`
-            text-[11px] font-black px-2 py-1 rounded-md uppercase
+            rounded-md px-2 py-1 text-[11px] font-black uppercase
             ${status === "Active"
               ? "bg-green-50 text-green-600"
               : "bg-slate-100 text-slate-400"}
@@ -68,14 +65,19 @@ const UserRow = ({
         </span>
       </td>
 
-      <td className="px-6 py-4 flex gap-3">
-        <button className="text-slate-400 hover:text-orange-500 transition cursor-pointer">
+      <td className="flex gap-3 px-6 py-4">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="cursor-pointer text-slate-400 transition hover:text-orange-500"
+        >
           <Edit size={16} />
         </button>
 
         <button
+          type="button"
           onClick={onDelete}
-          className="text-slate-400 hover:text-red-500 transition cursor-pointer"
+          className="cursor-pointer text-slate-400 transition hover:text-red-500"
         >
           <Trash2 size={16} />
         </button>

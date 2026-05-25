@@ -20,6 +20,7 @@ import {
 } from "../api/equipment";
 import { useAuth } from "../auth/AuthContext";
 import { canUseOperationsDashboard } from "../auth/roles";
+import { getDisplayStatus } from "../utils/equipmentStatus";
 
 function getDeviceId(device) {
   return device?.deviceId || device?.id || "";
@@ -30,9 +31,8 @@ function getBoxId(box) {
 }
 
 function normalizeDeviceStatus(device) {
-  if (device.active === false) return "DISABLED";
-
-  const status = String(device.status || "idle").toLowerCase();
+  const status = getDisplayStatus(device);
+  if (status === "disabled") return "DISABLED";
 
   if (status === "idle" || status === "free") return "FREE";
   if (status === "busy" || status === "in_use" || status === "reserved") {
@@ -46,6 +46,19 @@ function normalizeDeviceStatus(device) {
 
 function mapDeviceForEquipment(device, currentUser) {
   const deviceId = getDeviceId(device);
+  const occupancyStatus = String(device?.occupancy?.status || "").toLowerCase();
+  const occupancyUserName = device?.occupancy?.userName || device?.occupancy?.userId || "";
+  const occupancyLabel = occupancyUserName
+    ? occupancyStatus === "active"
+      ? `In use by ${occupancyUserName}`
+      : occupancyStatus === "pending"
+        ? `Reserved by ${occupancyUserName}`
+        : ""
+    : occupancyStatus === "active"
+      ? "Currently in use"
+      : occupancyStatus === "pending"
+        ? "Currently reserved"
+        : "";
 
   return {
     id: deviceId,
@@ -56,6 +69,7 @@ function mapDeviceForEquipment(device, currentUser) {
     status: normalizeDeviceStatus(device),
     access: true,
     sessionLimit: Math.round((currentUser?.sessionDurationSec || 1800) / 60),
+    occupancyLabel,
     raw: device,
   };
 }
@@ -85,7 +99,7 @@ const emptyModalState = {
 };
 
 const Equipment = () => {
-  const { profile, role, loading: authLoading } = useAuth();
+  const { profile, role, loading: authLoading, currentOrganizationId } = useAuth();
   const isOperationsRole = canUseOperationsDashboard(role);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [boxes, setBoxes] = useState([]);
@@ -98,7 +112,7 @@ const Equipment = () => {
   const [modalState, setModalState] = useState(emptyModalState);
 
   const loadEquipment = useCallback(async (isRefresh = false) => {
-    if (authLoading) {
+    if (authLoading || !currentOrganizationId) {
       return;
     }
 
@@ -131,7 +145,7 @@ const Equipment = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [authLoading, isOperationsRole]);
+  }, [authLoading, currentOrganizationId, isOperationsRole]);
 
   useEffect(() => {
     loadEquipment();

@@ -5,6 +5,7 @@ const {
 } = require('./auth.firebase.rest')
 const {
   ensureAuthUserProfile,
+  clearMustChangePassword,
   findUserByAuthUid,
 } = require('../users/users.service')
 
@@ -57,6 +58,14 @@ async function getMeFromAuthUid(authUid) {
   return findUserByAuthUid(authUid)
 }
 
+async function changePasswordForAuthUser(authUid, password) {
+  await auth.updateUser(authUid, {
+    password,
+  })
+
+  return clearMustChangePassword(authUid)
+}
+
 module.exports = {
   COOKIE_NAME,
   COOKIE_MAX_AGE_MS,
@@ -64,4 +73,5 @@ module.exports = {
   loginUser,
   createSessionCookie,
   getMeFromAuthUid,
+  changePasswordForAuthUser,
 }

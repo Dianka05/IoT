@@ -37,6 +37,16 @@ async function listDevices(limit = 50) {
   return snapshot.docs.map(mapDoc)
 }
 
+async function listDevicesByOrganization(organizationId, limit = 50) {
+  const snapshot = await db
+    .collection('devices')
+    .where('organizationId', '==', organizationId)
+    .limit(limit)
+    .get()
+
+  return snapshot.docs.map(mapDoc)
+}
+
 async function updateDeviceById(deviceId, patch) {
   const docRef = db.collection('devices').doc(deviceId)
   const existing = await docRef.get()
@@ -69,6 +79,7 @@ module.exports = {
   createDevice,
   getDeviceById,
   listDevices,
+  listDevicesByOrganization,
   updateDeviceById,
   deleteDeviceById,
 }

@@ -7,6 +7,7 @@ const statusStyles = {
   ACTIVE: 'bg-green-50 text-green-600',
   IDLE: 'bg-slate-100 text-slate-400',
   READY: 'bg-slate-100 text-slate-400',
+  MAINTENANCE: 'bg-yellow-50 text-yellow-700',
   OFFLINE: 'bg-red-50 text-red-600',
 };
 

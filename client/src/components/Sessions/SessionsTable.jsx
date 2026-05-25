@@ -18,13 +18,21 @@ export default function SessionsTable({ data, onTerminate }) {
         </thead>
 
         <tbody>
-          {data.map((session, index) => (
-            <SessionsRow
-              key={index}
-              session={session}
-              onTerminate={onTerminate}
-            />
-          ))}
+          {data.length === 0 ? (
+            <tr>
+              <td colSpan={8} className="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                No sessions found for the current organization.
+              </td>
+            </tr>
+          ) : (
+            data.map((session, index) => (
+              <SessionsRow
+                key={session.id || index}
+                session={session}
+                onTerminate={onTerminate}
+              />
+            ))
+          )}
         </tbody>
       </table>
     </div>
