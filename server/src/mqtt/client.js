@@ -10,6 +10,9 @@ const CLIENT_ID_BASE = process.env.MQTT_CLIENT_ID || 'backend-express'
 const CLIENT_ID = process.env.NODE_ENV === 'production'
   ? CLIENT_ID_BASE
   : `${CLIENT_ID_BASE}-${process.env.PORT || process.pid}`
+const SHOULD_DISABLE_MQTT =
+  process.env.DISABLE_MQTT === 'true' ||
+  process.env.VERCEL === '1'
 
 function resolveBrokerUrl() {
   if (MQTT_HOST) {
@@ -38,8 +41,10 @@ function createDisabledClient(reason) {
   }
 }
 
-if (!resolvedBrokerUrl) {
-  const reason = 'MQTT broker connection is not configured'
+if (SHOULD_DISABLE_MQTT || !resolvedBrokerUrl) {
+  const reason = SHOULD_DISABLE_MQTT
+    ? 'MQTT is disabled in the current runtime'
+    : 'MQTT broker connection is not configured'
 
   logWarning(reason)
   module.exports = createDisabledClient(reason)
