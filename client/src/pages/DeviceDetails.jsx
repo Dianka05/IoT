@@ -1,18 +1,22 @@
 import { useState } from 'react'; 
-import Sidebar from '../components/sidebar';
 import DeviceHeader from '../components/DeviceDetails/DeviceHeader';
 import { SessionInfo, TimerCard } from '../components/DeviceDetails/SessionInfo'; 
 import StatusFooter from '../components/DeviceDetails/StatusFooter';
+import PageShell from '../components/pageShell';
+import SurfaceCard from '../components/surfaceCard';
 import { LayoutDashboard, Menu } from 'lucide-react';
 
 const DeviceDetails = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc]">
-      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-
-      <main className="flex-1 p-6 md:p-10 pb-24">
+    <PageShell
+      sidebarOpen={isSidebarOpen}
+      setSidebarOpen={setIsSidebarOpen}
+      shellClassName="flex min-h-screen bg-[#f8fafc]"
+      mainClassName="flex-1 p-6 pb-24 md:p-10"
+      contentClassName=""
+    >
         <button 
           onClick={() => setIsSidebarOpen(true)}
           className="md:hidden mb-6 p-2 bg-white rounded-xl border border-slate-100 text-slate-600 shadow-sm"
@@ -27,7 +31,7 @@ const DeviceDetails = () => {
         />
 
         <div className="mt-10 max-w-2xl">
-          <div className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-sm">
+          <SurfaceCard className="p-6 md:p-8">
             <div className="flex items-center gap-2 mb-8">
               <LayoutDashboard size={18} className="text-slate-400" />
               <h3 className="font-black text-slate-800 uppercase text-xs tracking-[0.2em]">
@@ -37,12 +41,11 @@ const DeviceDetails = () => {
             
             <SessionInfo userName="Johnathan Doe" role="Technician L3" />
             <TimerCard timeLeft="14:52" />
-          </div>
+          </SurfaceCard>
         </div>
 
         <StatusFooter />
-      </main>
-    </div>
+    </PageShell>
   );
 };
 

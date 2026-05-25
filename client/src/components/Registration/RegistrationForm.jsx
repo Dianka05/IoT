@@ -1,41 +1,71 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { register } from "../../api/auth";
+import { useAuth } from "../../auth/AuthContext";
 
 export default function RegistrationForm() {
   const navigate = useNavigate();
+  const { refreshAuth } = useAuth();
 
   const [form, setForm] = useState({
     email: "",
     password: "",
     confirm: "",
   });
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (event) => {
+    setForm((prev) => ({
+      ...prev,
+      [event.target.name]: event.target.value,
+    }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (form.password !== form.confirm) {
       alert("Passwords do not match");
       return;
     }
 
-    alert("Account created successfully");
+    if (!form.email || !form.password) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await register(form.email, form.password);
+
+      if (result.success) {
+        alert("Admin account created successfully");
+        const currentUser = await refreshAuth();
+        const nextProfile = currentUser?.profile || null;
+        const hasCurrentOrganization = Boolean(nextProfile?.currentOrganizationId);
+        navigate(hasCurrentOrganization ? "/dashboard" : "/create-organization");
+      } else {
+        alert(result.error?.message || "Registration failed");
+      }
+    } catch (err) {
+      console.error("Registration error:", err);
+      alert("Server is not responding. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="space-y-4">
-
-      <h2 className="text-xl font-semibold text-gray-800 text-center">
+      <h2 className="text-center text-xl font-semibold text-gray-800">
         Create an account
       </h2>
 
-      <p className="text-sm text-gray-600 text-center">
-        Fill in your details to register.
+      <p className="text-center text-sm text-gray-600">
+        Register a new admin account to create your first organization.
       </p>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="mb-1 block text-sm font-medium text-gray-700">
           Email Address
         </label>
         <input
@@ -43,13 +73,14 @@ export default function RegistrationForm() {
           name="email"
           value={form.email}
           onChange={handleChange}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none"
+          disabled={loading}
+          className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:bg-gray-100"
           placeholder="you@example.com"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="mb-1 block text-sm font-medium text-gray-700">
           Password
         </label>
         <input
@@ -57,13 +88,14 @@ export default function RegistrationForm() {
           name="password"
           value={form.password}
           onChange={handleChange}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none"
-          placeholder="••••••••"
+          disabled={loading}
+          className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:bg-gray-100"
+          placeholder="********"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="mb-1 block text-sm font-medium text-gray-700">
           Confirm Password
         </label>
         <input
@@ -71,27 +103,32 @@ export default function RegistrationForm() {
           name="confirm"
           value={form.confirm}
           onChange={handleChange}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none"
-          placeholder="••••••••"
+          disabled={loading}
+          className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:bg-gray-100"
+          placeholder="********"
         />
       </div>
 
       <button
         onClick={handleSubmit}
-        className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-2 rounded-lg font-medium transition"
+        disabled={loading}
+        className={`w-full rounded-lg py-2 font-medium text-white transition ${
+          loading
+            ? "cursor-not-allowed bg-orange-300"
+            : "bg-orange-500 hover:bg-orange-600 active:bg-orange-700"
+        }`}
       >
-        Register
+        {loading ? "Registering..." : "Register"}
       </button>
 
       <div className="text-center">
         <button
           onClick={() => navigate("/login")}
-          className="text-sm text-gray-600 hover:text-gray-800 active:text-gray-900 transition"
+          className="text-sm text-gray-600 transition hover:text-gray-800 active:text-gray-900"
         >
           Back to login
         </button>
       </div>
-
     </div>
   );
 }

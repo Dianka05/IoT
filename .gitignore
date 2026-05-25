@@ -29,5 +29,10 @@ server/secrets/
 /node_modules
 
 server/secrets.json
+secrets.json
 *.firebase.json
 *.service-account.json
+*.json
+
+/arduino
+changes.md

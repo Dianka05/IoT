@@ -1,6 +1,7 @@
 require('dotenv').config()
 const { errorHandler, setConfig, logDebug } = require('ds-express-errors')
 const express = require('express')
+const cors = require('cors')
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
@@ -12,19 +13,15 @@ const mainBoxRoutes = require('./src/modules/boxes/main-box/boxes.routes')
 const sessionRoutes = require('./src/modules/sessions/sessions.route')
 const userRoutes = require('./src/modules/users/users.routes')
 const logsRoutes = require('./src/modules/logs/logs.routes')
+const authRoutes = require('./src/modules/auth/auth.routes')
+const activitiesRoutes = require('./src/modules/activities/activities.routes')
+const organizationsRoutes = require('./src/modules/organizations/organizations.routes')
+const configurationRoutes = require('./src/modules/configuration/configuration.routes')
 
+const cookieParser = require('cookie-parser')
 
 const client = require('./src/mqtt/client')
 const { initMqtt } = require('./src/mqtt/init')
-// const { db } = require('./src/integrations/firebase/firebase.client')
-// const { writeLog, getRecentLogs } = require('./src/modules/logs/logs.store.firestore')
-// const {
-//   logAuthRequestReceived,
-//   logAuthDenied,
-//   logAuthGranted,
-//   logSessionStarted,
-//   logSessionEnded,
-// } = require('./src/modules/logs/logs.service')
 
 
 try {
@@ -35,6 +32,38 @@ try {
 }
 
 const app = express()
+const configuredOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  ...(process.env.CLIENT_URLS
+    ? process.env.CLIENT_URLS.split(',').map((value) => value.trim())
+    : []),
+].filter(Boolean)
+const allowedOrigins = [...new Set([
+  'http://localhost:5173',
+  'https://iot-hrtzvsdpt-dianas-projects-a89f9e8a.vercel.app',
+  ...configuredOrigins,
+])]
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+      return
+    }
+
+    callback(new Error('Not allowed by CORS'))
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}
+
+app.use(cors(corsOptions))
+app.options(/.*/, cors(corsOptions))
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+}))
 app.use(express.json())
 
 setConfig({
@@ -75,18 +104,27 @@ const options = {
     './src/modules/**/*.js'
   ]
 };
+app.use(cookieParser())
 
 const swaggerSpec = swaggerJsdoc(options);
 console.log('PATHS:', Object.keys(swaggerSpec.paths || {}))
-app.use('/api', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.use(fanRoutes)
-app.use(mainBoxRoutes)
+app.use('/api', fanRoutes)
+app.use('/api', mainBoxRoutes)
 
-app.use(sessionRoutes)
-app.use(userRoutes)
+app.use('/api', sessionRoutes)
+app.use('/api', userRoutes)
 
-app.use(logsRoutes)
+app.use('/api', logsRoutes)
+
+app.use('/api', activitiesRoutes)
+
+app.use('/api', organizationsRoutes)
+
+app.use('/api', configurationRoutes)
+
+app.use('/api', authRoutes)
 
 /**
  * @swagger
@@ -118,9 +156,9 @@ app.get('/health', (req, res, next) => {
   })
 })
 
-app.listen(process.env.PORT || 3000, () => {
+app.listen(process.env.PORT || 3001, () => {
   logDebug(
-    'HTTP server running on http://localhost:' + (process.env.PORT || 3000),
+    'HTTP server running on http://localhost:' + (process.env.PORT || 3001),
   )
 })
 

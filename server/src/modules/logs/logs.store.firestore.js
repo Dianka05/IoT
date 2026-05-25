@@ -24,7 +24,22 @@ async function getRecentLogs(limit = 20) {
   }))
 }
 
+async function getRecentLogsByOrganization(organizationId, limit = 20) {
+  const snapshot = await db
+    .collection('logs')
+    .where('organizationId', '==', organizationId)
+    .orderBy('createdAt', 'desc')
+    .limit(limit)
+    .get()
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }))
+}
+
 module.exports = {
   writeLog,
   getRecentLogs,
+  getRecentLogsByOrganization,
 }
