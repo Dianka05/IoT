@@ -43,7 +43,7 @@ const UserRow = ({
         </span>
       </td>
 
-      <td className="px-6 py-4 text-[14px] text-slate-600 font-medium">
+      <td className="px-6 py-4 text-[14px] whitespace-nowrap text-slate-600 font-medium">
         {rfid || "—"}
       </td>
 
@@ -69,13 +69,13 @@ const UserRow = ({
       </td>
 
       <td className="px-6 py-4 flex gap-3">
-        <button className="text-slate-400 hover:text-orange-500 transition">
+        <button className="text-slate-400 hover:text-orange-500 transition cursor-pointer">
           <Edit size={16} />
         </button>
 
         <button
           onClick={onDelete}
-          className="text-slate-400 hover:text-red-500 transition"
+          className="text-slate-400 hover:text-red-500 transition cursor-pointer"
         >
           <Trash2 size={16} />
         </button>

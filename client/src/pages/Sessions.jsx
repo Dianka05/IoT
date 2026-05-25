@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 
-import AdminSidebar from "../components/AdminSidebar";
-import SessionsHeader from "../components/Sessions/SessionsHeader";
+import LoadingScreen from "../components/loadingScreen";
+import PageHeader from "../components/pageHeader";
+import PageShell from "../components/pageShell";
 import SessionsStats from "../components/Sessions/SessionsStats";
 import SessionsTable from "../components/Sessions/SessionsTable";
 import SessionsPagination from "../components/Sessions/SessionsPagination";
+import { canUseOperationsDashboard, getDefaultRouteForRole } from "../auth/roles";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Sessions() {
+  const { role, loading: authLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const perPage = 6;
@@ -284,15 +289,24 @@ export default function Sessions() {
   const end = start + perPage;
   const pageData = sessionsState.slice(start, end);
 
+  if (authLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!canUseOperationsDashboard(role)) {
+    return <Navigate to={getDefaultRouteForRole(role)} replace />;
+  }
+
   return (
-    <div className="flex min-h-screen h-screen bg-[#f8fafc] overflow-hidden">
-
-      <AdminSidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-[1400px] mx-auto">
-
-          <SessionsHeader setSidebarOpen={setSidebarOpen} />
+    <PageShell
+      sidebarOpen={sidebarOpen}
+      setSidebarOpen={setSidebarOpen}
+    >
+          <PageHeader
+            title="Sessions"
+            subtitle="Monitor and manage all active hardware access sessions."
+            setSidebarOpen={setSidebarOpen}
+          />
 
           <div className="space-y-10">
 
@@ -313,9 +327,6 @@ export default function Sessions() {
             </section>
 
           </div>
-
-        </div>
-      </main>
-    </div>
+    </PageShell>
   );
 }

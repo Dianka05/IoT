@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SurfaceCard from "../surfaceCard";
 
 export default function ListEquipment({
   permissions = [],
@@ -31,12 +32,12 @@ export default function ListEquipment({
         const isFree = item.status === "FREE";
 
         return (
-          <div
+          <SurfaceCard
             key={item.id}
             className="
               relative
-              p-4 md:py-6 bg-white border border-slate-200 rounded-xl shadow-sm
-              flex flex-col md:flex-row md:items-center md:gap-6 gap-3
+              p-4 md:py-6 shadow-sm
+              flex justify-between md:flex-row md:items-center md:gap-6 gap-3
             "
           >
             <div className="flex items-center gap-3 flex-shrink-0">
@@ -199,7 +200,7 @@ export default function ListEquipment({
                 )}
               </div>
             )}
-          </div>
+          </SurfaceCard>
         );
       })}
 

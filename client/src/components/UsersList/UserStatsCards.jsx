@@ -1,4 +1,4 @@
-import StatCard from "./StatCard";
+import StatCard from "../statCard";
 import { Users, Activity, CreditCard, Monitor } from "lucide-react";
 
 const UserStatsCards = ({ users = [], devices = [] }) => {
@@ -37,7 +37,7 @@ const UserStatsCards = ({ users = [], devices = [] }) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
       {stats.map((s, i) => (
         <StatCard key={i} {...s} />
       ))}
