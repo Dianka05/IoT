@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../../api/auth";
 import { useAuth } from "../../auth/AuthContext";
-import { getDefaultRouteForRole } from "../../auth/roles";
 
 export default function LoginForm() {
   const navigate = useNavigate();
@@ -27,7 +26,9 @@ export default function LoginForm() {
       if (result.success) {
         alert("Login successful!");
         const currentUser = await refreshAuth();
-        navigate(getDefaultRouteForRole(currentUser?.profile?.role));
+        const nextProfile = currentUser?.profile || null;
+        const hasCurrentOrganization = Boolean(nextProfile?.currentOrganizationId);
+        navigate(hasCurrentOrganization ? "/dashboard" : "/create-organization");
       } else {
         alert(result.error?.message || "Login failed");
       }

@@ -8,13 +8,12 @@ async function requireUserProfile(req, res, next) {
     }
 
     const profile = await findUserByAuthUid(req.auth.uid)
-
     if (!profile) {
       return next(Errors.Forbidden('User profile not found'))
     }
 
-    if (profile.active !== true) {
-      return next(Errors.Forbidden('User is inactive'))
+    if (profile.currentMembership && profile.active !== true) {
+      return next(Errors.Forbidden('User is inactive in the current organization'))
     }
 
     req.userProfile = profile
@@ -24,24 +23,72 @@ async function requireUserProfile(req, res, next) {
   }
 }
 
-async function requireAdmin(req, res, next) {
+async function ensureProfile(req) {
+  if (req.userProfile) return req.userProfile
+
+  const profile = await findUserByAuthUid(req.auth.uid)
+  if (!profile) {
+    return null
+  }
+
+  req.userProfile = profile
+  return profile
+}
+
+async function requireOrganizationContext(req, res, next) {
   try {
-    if (!req.userProfile) {
-      const profile = await findUserByAuthUid(req.auth.uid)
+    const profile = await ensureProfile(req)
 
-      if (!profile) {
-        return next(Errors.Forbidden('User profile not found'))
-      }
-
-      req.userProfile = profile
+    if (!profile) {
+      return next(Errors.Forbidden('User profile not found'))
     }
 
-    if (req.userProfile.role !== 'admin') {
+    if (!profile.currentOrganizationId) {
+      return next(Errors.Forbidden('Current organization is not set'))
+    }
+
+    next()
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function requireAdmin(req, res, next) {
+  try {
+    const profile = await ensureProfile(req)
+
+    if (!profile) {
+      return next(Errors.Forbidden('User profile not found'))
+    }
+
+    if (!profile.currentOrganizationId) {
+      return next(Errors.Forbidden('Current organization is not set'))
+    }
+
+    if (profile.role !== 'admin') {
       return next(Errors.Forbidden('Admin role required'))
     }
 
-    if (!req.userProfile.organizationId) {
-      return next(Errors.Forbidden('Admin organization is not set'))
+    next()
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function requireOperationsRole(req, res, next) {
+  try {
+    const profile = await ensureProfile(req)
+
+    if (!profile) {
+      return next(Errors.Forbidden('User profile not found'))
+    }
+
+    if (!profile.currentOrganizationId) {
+      return next(Errors.Forbidden('Current organization is not set'))
+    }
+
+    if (profile.role !== 'admin' && profile.role !== 'technician') {
+      return next(Errors.Forbidden('Operations role required'))
     }
 
     next()
@@ -52,5 +99,7 @@ async function requireAdmin(req, res, next) {
 
 module.exports = {
   requireUserProfile,
+  requireOrganizationContext,
   requireAdmin,
+  requireOperationsRole,
 }

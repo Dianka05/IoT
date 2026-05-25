@@ -22,7 +22,7 @@ function mapDoc(doc) {
   }
 }
 
-async function upsertActivity({ type, entityId, activityType, payload }) {
+async function upsertActivity({ type, entityId, activityType, organizationId, payload }) {
   const docId = buildActivityDocId(type, entityId, activityType)
   const docRef = db.collection('activities').doc(docId)
 
@@ -32,6 +32,7 @@ async function upsertActivity({ type, entityId, activityType, payload }) {
       type,
       entityId,
       activityType,
+      organizationId: organizationId || null,
       payload,
       updatedAt: FieldValue.serverTimestamp(),
     },
@@ -48,8 +49,12 @@ async function getActivityByDocId(docId) {
   return mapDoc(doc)
 }
 
-async function listActivities({ type, entityId, activityType, limit = 50 } = {}) {
+async function listActivities({ type, entityId, activityType, organizationId, limit = 50 } = {}) {
   let query = db.collection('activities')
+
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId)
+  }
 
   if (type) {
     query = query.where('type', '==', type)

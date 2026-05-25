@@ -85,7 +85,7 @@ const emptyModalState = {
 };
 
 const Equipment = () => {
-  const { profile, role, loading: authLoading } = useAuth();
+  const { profile, role, loading: authLoading, currentOrganizationId } = useAuth();
   const isOperationsRole = canUseOperationsDashboard(role);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [boxes, setBoxes] = useState([]);
@@ -98,7 +98,7 @@ const Equipment = () => {
   const [modalState, setModalState] = useState(emptyModalState);
 
   const loadEquipment = useCallback(async (isRefresh = false) => {
-    if (authLoading) {
+    if (authLoading || !currentOrganizationId) {
       return;
     }
 
@@ -131,7 +131,7 @@ const Equipment = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [authLoading, isOperationsRole]);
+  }, [authLoading, currentOrganizationId, isOperationsRole]);
 
   useEffect(() => {
     loadEquipment();

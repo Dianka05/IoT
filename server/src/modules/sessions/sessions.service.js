@@ -1,30 +1,27 @@
 const { v4: uuidv4 } = require('uuid')
-
 const store = require('./sessions.store.firestore')
+const { publishEndSession, publishAuthResult } = require('../boxes/main-box/boxes.service')
+const { publishDeviceAccessSet, publishDeviceEndSession } = require('../devices/fan-1/device.service')
 const {
-  publishEndSession,
-  publishAuthResult,
-} = require('../boxes/main-box/boxes.service')
-const {
-  publishDeviceAccessSet,
-  publishDeviceEndSession,
-} = require('../devices/fan-1/device.service')
-
-
-const {
-  logAuthRequestReceived,
   logAuthDenied,
   logAuthGranted,
   logSessionStarted,
   logSessionEnded,
 } = require('../logs/logs.service')
-
-const { findActiveUserByUid } = require('../users/users.service')
+const {
+  findActiveUserByUidForOrganization,
+} = require('../users/users.service')
+const { getBoxById } = require('../boxes/main-box/boxes.store.firestore')
+const { getDeviceById } = require('../devices/fan-1/devices.store.firestore')
 
 async function handleAuthRequest(msg) {
   const { uid, boxId } = msg.payload
+  const box = await getBoxById(boxId)
 
-  const user = await findActiveUserByUid(uid)
+  const user = box?.organizationId
+    ? await findActiveUserByUidForOrganization(uid, box.organizationId)
+    : null
+
   if (!user) {
     await logAuthDenied({ uid, boxId }, 'UID not recognized or user inactive')
 
@@ -63,8 +60,6 @@ async function handleAuthRequest(msg) {
 }
 
 async function handleSessionStarted(msg) {
-  console.log('Session started: ', msg.payload)
-
   const { sessionId } = msg.payload
   if (!sessionId) return null
 
@@ -79,18 +74,19 @@ async function handleSessionStarted(msg) {
       )
     }
 
-    await logSessionStarted({
-      boxId: session.boxId,
-      sessionId: session.sessionId,
-    })
+    await logSessionStarted(
+      {
+        boxId: session.boxId,
+        sessionId: session.sessionId,
+      },
+      session
+    )
   }
-  return session
 
+  return session
 }
 
 async function handleSessionEnded(msg) {
-  console.log('Session ended: ', msg.payload)
-
   const { sessionId } = msg.payload
   if (!sessionId) return null
 
@@ -104,7 +100,6 @@ async function handleSessionEnded(msg) {
   const session = await store.endSession(sessionId)
   await logSessionEnded(msg.payload, session)
   return session
-
 }
 
 function handleSessionsState(msg) {
@@ -137,32 +132,82 @@ async function forceEndSessionByDeviceId(deviceId, reason = 'manual', sessionId 
   return session
 }
 
-async function getSessions(limit = 50, status = null) {
-  return store.listSessions(limit, status)
+async function getSessionsForProfile(profile, limit = 50, status = null) {
+  const sessions = await store.listSessionsByOrganization(
+    profile.currentOrganizationId,
+    limit,
+    status
+  )
+
+  if (profile.role === 'admin' || profile.role === 'technician') {
+    return sessions
+  }
+
+  return sessions.filter((session) => session.userId === profile.userId)
 }
 
-async function getSessionById(sessionId) {
-  return store.getSession(sessionId)
+async function getSessionByIdForProfile(profile, sessionId) {
+  const session = await store.getSession(sessionId)
+  if (!session) return null
+
+  if (session.organizationId !== profile.currentOrganizationId) {
+    return null
+  }
+
+  if (profile.role === 'admin' || profile.role === 'technician') {
+    return session
+  }
+
+  return session.userId === profile.userId ? session : null
 }
 
 async function createPendingSession(data = {}) {
   if (!data.boxId) throw new Error('boxId is required')
   if (!data.uid) throw new Error('uid is required')
-  
-
-
   if (!Array.isArray(data.deviceIds) || data.deviceIds.length === 0) {
     throw new Error('deviceIds is required')
   }
 
-  const user = await findActiveUserByUid(data.uid)
-  if (!user) {
-    throw new Error('Active user not found for uid')
+  const box = await getBoxById(data.boxId)
+  if (!box) {
+    throw new Error('BOX_NOT_FOUND')
   }
 
+  const organizationId = box.organizationId
+  if (!organizationId) {
+    throw new Error('BOX_ORGANIZATION_NOT_SET')
+  }
+
+  const user = await findActiveUserByUidForOrganization(data.uid, organizationId)
+  if (!user) {
+    throw new Error('Active user not found for uid in organization')
+  }
+
+  const allowedDeviceIds = new Set(user.allowedDeviceIds || [])
+
+  for (const deviceId of data.deviceIds) {
+    const device = await getDeviceById(deviceId)
+
+    if (!device) {
+      throw new Error(`Device not found: ${deviceId}`)
+    }
+
+    if (device.organizationId !== organizationId) {
+      throw new Error(`Device is outside organization: ${deviceId}`)
+    }
+
+    if ((device.boxId || null) !== data.boxId) {
+      throw new Error(`Device does not belong to box: ${deviceId}`)
+    }
+
+    if (!allowedDeviceIds.has(deviceId)) {
+      throw new Error(`Device is not allowed for user: ${deviceId}`)
+    }
+  }
 
   const session = {
     sessionId: uuidv4(),
+    organizationId,
     boxId: data.boxId,
     uid: data.uid,
     userId: user.userId,
@@ -174,9 +219,8 @@ async function createPendingSession(data = {}) {
     status: 'pending',
   }
 
-
   for (const deviceId of session.deviceIds) {
-    if (await store.isDeviceBusy(deviceId)) {
+    if (await store.isDeviceBusy(deviceId, organizationId)) {
       throw new Error(`Device is busy: ${deviceId}`)
     }
   }
@@ -205,8 +249,8 @@ module.exports = {
   handleSessionEnded,
   handleSessionsState,
   forceEndSession,
-  getSessions,
-  getSessionById,
+  getSessionsForProfile,
+  getSessionByIdForProfile,
   startSessionById,
   endSessionById,
   forceEndSessionByDeviceId,

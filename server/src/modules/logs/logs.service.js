@@ -1,4 +1,5 @@
 const { writeLog } = require('./logs.store.firestore')
+const { getBoxById } = require('../boxes/main-box/boxes.store.firestore')
 
 function serializeError(err) {
   return {
@@ -8,6 +9,17 @@ function serializeError(err) {
   }
 }
 
+async function resolveOrganizationId(payload = {}, session = null) {
+  const boxId = payload.boxId || session?.boxId || null
+
+  if (!boxId) {
+    return session?.organizationId || null
+  }
+
+  const box = await getBoxById(boxId)
+  return box?.organizationId || session?.organizationId || null
+}
+
 async function logAuthRequestReceived(payload) {
   return writeLog({
     type: 'auth_request',
@@ -15,6 +27,7 @@ async function logAuthRequestReceived(payload) {
     source: 'mqtt',
     boxId: payload.boxId || null,
     uid: payload.uid || null,
+    organizationId: await resolveOrganizationId(payload),
     message: 'Auth request received',
     payload,
   })
@@ -27,6 +40,7 @@ async function logAuthDenied(payload, reason) {
     source: 'mqtt',
     boxId: payload.boxId || null,
     uid: payload.uid || null,
+    organizationId: await resolveOrganizationId(payload),
     reason: reason || null,
     message: 'Access denied',
     payload,
@@ -43,18 +57,20 @@ async function logAuthGranted(session) {
     userId: session.userId || null,
     sessionId: session.sessionId || null,
     deviceIds: session.deviceIds || [],
+    organizationId: await resolveOrganizationId(session, session),
     message: 'Access granted and session created',
     payload: session,
   })
 }
 
-async function logSessionStarted(payload) {
+async function logSessionStarted(payload, session = null) {
   return writeLog({
     type: 'session_started',
     level: 'info',
     source: 'mqtt',
-    boxId: payload.boxId || null,
-    sessionId: payload.sessionId || null,
+    boxId: payload.boxId || session?.boxId || null,
+    sessionId: payload.sessionId || session?.sessionId || null,
+    organizationId: await resolveOrganizationId(payload, session),
     message: 'Session started event received',
     payload,
   })
@@ -69,6 +85,7 @@ async function logSessionEnded(payload, session) {
     uid: payload.uid || (session ? session.uid : null),
     sessionId: payload.sessionId || null,
     deviceIds: session ? session.deviceIds || [] : [],
+    organizationId: await resolveOrganizationId(payload, session),
     message: session
       ? 'Session ended and was closed in store'
       : 'Session ended event received but session was not found in store',
@@ -86,6 +103,7 @@ async function logMqttHandlerError(topic, messageBuffer, err) {
     source: 'mqtt',
     topic,
     message: 'MQTT handler failed',
+    organizationId: null,
     payload: {
       rawMessage: messageBuffer ? messageBuffer.toString() : null,
       error: serializeError(err),

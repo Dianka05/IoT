@@ -251,7 +251,13 @@ function buildCurrentUserCardData(profile, role, activeSession, deviceNameMap, w
 }
 
 const Dashboard = () => {
-  const { profile, role, loading: authLoading } = useAuth();
+  const {
+    profile,
+    role,
+    loading: authLoading,
+    currentOrganizationId,
+    currentOrganization,
+  } = useAuth();
   const isOperationsRole = canUseOperationsDashboard(role);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [devices, setDevices] = useState([]);
@@ -268,7 +274,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
-    if (authLoading) return;
+    if (authLoading || !currentOrganizationId) return;
 
     if (isRefresh) {
       setRefreshing(true);
@@ -298,7 +304,7 @@ const Dashboard = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [authLoading, isOperationsRole]);
+  }, [authLoading, currentOrganizationId, isOperationsRole]);
 
   useEffect(() => {
     loadDashboard();
@@ -326,9 +332,19 @@ const Dashboard = () => {
       role,
       currentUserActiveSession,
       deviceNameMap,
-      isOperationsRole ? 'Operations workspace' : 'Personal workspace'
+      currentOrganization?.name ||
+        currentOrganizationId ||
+        (isOperationsRole ? 'Operations workspace' : 'Personal workspace')
     ),
-    [profile, role, currentUserActiveSession, deviceNameMap, isOperationsRole]
+    [
+      profile,
+      role,
+      currentUserActiveSession,
+      deviceNameMap,
+      currentOrganization,
+      currentOrganizationId,
+      isOperationsRole,
+    ]
   );
 
   const activityItems = useMemo(

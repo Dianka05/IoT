@@ -312,7 +312,7 @@ function buildSystemIdentity(box, boxActivity, relatedDevices) {
 }
 
 export default function EnvironmentDashboard() {
-  const { role, loading: authLoading } = useAuth();
+  const { role, loading: authLoading, currentOrganizationId } = useAuth();
   const [searchParams] = useSearchParams();
   const boxId = searchParams.get("boxId") || "";
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -325,7 +325,7 @@ export default function EnvironmentDashboard() {
   const [deviceActivities, setDeviceActivities] = useState([]);
 
   const loadEnvironment = useCallback(async (isRefresh = false) => {
-    if (!boxId) {
+    if (!boxId || !currentOrganizationId) {
       setLoading(false);
       return;
     }
@@ -381,7 +381,7 @@ export default function EnvironmentDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [boxId]);
+  }, [boxId, currentOrganizationId]);
 
   useEffect(() => {
     loadEnvironment();

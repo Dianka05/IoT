@@ -19,7 +19,7 @@ import { canManageUsers, getDefaultRouteForRole } from "../auth/roles";
 import { useAuth } from "../auth/AuthContext";
 
 export default function UsersList() {
-  const { role, loading: authLoading } = useAuth();
+  const { role, loading: authLoading, currentOrganizationId } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("All Users");
 
@@ -51,10 +51,11 @@ export default function UsersList() {
   };
 
   useEffect(() => {
-    if (!authLoading && canManageUsers(role)) {
+    if (!authLoading && currentOrganizationId && canManageUsers(role)) {
+      setLoading(true);
       loadData();
     }
-  }, [authLoading, role]);
+  }, [authLoading, currentOrganizationId, role]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

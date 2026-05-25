@@ -33,3 +33,6 @@ secrets.json
 *.firebase.json
 *.service-account.json
 *.json
+
+/arduino
+changes.md

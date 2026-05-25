@@ -3,12 +3,52 @@ const {
   createDevice,
   getDeviceById,
   listDevices,
+  listDevicesByOrganization,
   updateDeviceById,
   deleteDeviceById,
 } = require('./devices.store.firestore')
+const { getBoxById } = require('../../boxes/main-box/boxes.store.firestore')
+const { getAccessibleOrganizationIds } = require('../../users/users.service')
 
+function resolveTargetOrganizationId(userProfile, requestedOrganizationId = null) {
+  if (requestedOrganizationId) {
+    if (!getAccessibleOrganizationIds(userProfile).includes(requestedOrganizationId)) {
+      throw new Error('ORGANIZATION_ACCESS_DENIED')
+    }
 
-async function addDevice(data) {
+    return requestedOrganizationId
+  }
+
+  if (!userProfile.currentOrganizationId) {
+    throw new Error('CURRENT_ORGANIZATION_NOT_SET')
+  }
+
+  return userProfile.currentOrganizationId
+}
+
+async function assertBoxBelongsToOrganization(boxId, organizationId) {
+  if (!boxId) return null
+
+  const box = await getBoxById(boxId)
+  if (!box) {
+    throw new Error('BOX_NOT_FOUND')
+  }
+
+  if (box.organizationId !== organizationId) {
+    throw new Error('BOX_OUTSIDE_ORGANIZATION')
+  }
+
+  return box
+}
+
+async function addDevice(userProfile, data) {
+  const organizationId = resolveTargetOrganizationId(
+    userProfile,
+    data.organizationId || null
+  )
+
+  await assertBoxBelongsToOrganization(data.boxId || null, organizationId)
+
   return createDevice({
     deviceId: data.deviceId,
     name: data.name,
@@ -17,7 +57,12 @@ async function addDevice(data) {
     active: data.active ?? true,
     status: data.status || 'idle',
     metadata: data.metadata || {},
+    organizationId,
   })
+}
+
+async function getDevicesForOrganization(organizationId, limit = 50) {
+  return listDevicesByOrganization(organizationId, limit)
 }
 
 async function getDevices(limit = 50) {
@@ -28,15 +73,31 @@ async function getDevice(deviceId) {
   return getDeviceById(deviceId)
 }
 
-async function patchDevice(deviceId, patch) {
+async function patchDevice(userProfile, deviceId, patch) {
+  const current = await getDeviceById(deviceId)
+  if (!current) return null
+
+  if (current.organizationId !== userProfile.currentOrganizationId) {
+    throw new Error('ORGANIZATION_ACCESS_DENIED')
+  }
+
+  if (patch.boxId !== undefined) {
+    await assertBoxBelongsToOrganization(patch.boxId, current.organizationId)
+  }
+
   return updateDeviceById(deviceId, patch)
 }
 
-async function removeDevice(deviceId) {
+async function removeDevice(userProfile, deviceId) {
+  const current = await getDeviceById(deviceId)
+  if (!current) return false
+
+  if (current.organizationId !== userProfile.currentOrganizationId) {
+    throw new Error('ORGANIZATION_ACCESS_DENIED')
+  }
+
   return deleteDeviceById(deviceId)
 }
-
-// ----------------------------
 
 function publishFanSet(deviceId, enabled, sessionId) {
   return publishDeviceCommand(deviceId, 'fan_set', {
@@ -65,6 +126,7 @@ function publishDeviceEndSession(deviceId, reason) {
 module.exports = {
   addDevice,
   getDevices,
+  getDevicesForOrganization,
   getDevice,
   patchDevice,
   removeDevice,

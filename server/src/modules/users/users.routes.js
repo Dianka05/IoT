@@ -89,6 +89,7 @@ router.post('/users', requireAuth, requireAdmin, async (req, res, next) => {
       allowedDeviceIds,
       cards,
       sessionDurationSec,
+      organizationId,
     } = req.body || {}
 
     if (!email || typeof email !== 'string') {
@@ -128,6 +129,7 @@ router.post('/users', requireAuth, requireAdmin, async (req, res, next) => {
       allowedDeviceIds,
       cards,
       sessionDurationSec,
+      organizationId,
     })
 
     res.json({
@@ -135,6 +137,10 @@ router.post('/users', requireAuth, requireAdmin, async (req, res, next) => {
       item,
     })
   } catch (err) {
+    if (err.message === 'ORGANIZATION_ACCESS_DENIED') {
+      return next(Errors.Forbidden('Cannot create user in another organization'))
+    }
+
     next(err)
   }
 })

@@ -38,8 +38,18 @@ async function listOrganizations(limit = 50) {
   return snapshot.docs.map(mapDoc)
 }
 
+async function listOrganizationsByIds(organizationIds = []) {
+  const ids = [...new Set(organizationIds.filter(Boolean))]
+  const items = await Promise.all(
+    ids.map((organizationId) => getOrganizationById(organizationId))
+  )
+
+  return items.filter(Boolean)
+}
+
 module.exports = {
   createOrganization,
   getOrganizationById,
   listOrganizations,
+  listOrganizationsByIds,
 }
