@@ -273,6 +273,11 @@ export default function UserEntityModal({
                   onChange={(event) => setField("email", event.target.value)}
                   placeholder="testuser@example.com"
                 />
+                {mode === "create" && (
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    If this email already belongs to an existing account, the user will be added to the current organization instead of creating a second account.
+                  </p>
+                )}
               </div>
 
               {mode === "create" && (
@@ -284,6 +289,9 @@ export default function UserEntityModal({
                     onChange={(event) => setField("password", event.target.value)}
                     placeholder="Temporary password to share with the user"
                   />
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    A temporary password is only used when this is a brand-new account. Existing users keep their current password.
+                  </p>
                 </div>
               )}
 

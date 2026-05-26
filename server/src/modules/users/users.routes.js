@@ -99,8 +99,8 @@ router.post('/users', requireAuth, requireAdmin, async (req, res, next) => {
       return next(Errors.BadRequest('`email` must be a non-empty string'))
     }
 
-    if (!password || typeof password !== 'string') {
-      return next(Errors.BadRequest('`password` must be a non-empty string'))
+    if (password !== undefined && password !== null && typeof password !== 'string') {
+      return next(Errors.BadRequest('`password` must be a string'))
     }
 
     if (name !== undefined && name !== null && typeof name !== 'string') {
@@ -150,6 +150,10 @@ router.post('/users', requireAuth, requireAdmin, async (req, res, next) => {
 
     if (String(err.message || '').startsWith('DEVICE_OUTSIDE_ORGANIZATION:')) {
       return next(Errors.BadRequest('Selected devices must belong to the current organization'))
+    }
+
+    if (err.message === 'PASSWORD_REQUIRED_FOR_NEW_USER') {
+      return next(Errors.BadRequest('Temporary password is required when creating a brand-new account'))
     }
 
     next(err)

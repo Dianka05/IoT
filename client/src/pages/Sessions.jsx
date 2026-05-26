@@ -105,14 +105,21 @@ export default function Sessions() {
 
   const perPage = 6;
 
-  const loadSessionsData = useCallback(async () => {
+  const loadSessionsData = useCallback(async ({
+    silent = false,
+    preservePage = false,
+  } = {}) => {
     if (!currentOrganizationId) {
       setSessions([]);
+      setBoxes([]);
+      setDevices([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
     setError("");
 
     try {
@@ -124,12 +131,16 @@ export default function Sessions() {
       setSessions(items);
       setBoxes(boxesList);
       setDevices(devicesList);
-      setPage(1);
+      if (!preservePage) {
+        setPage(1);
+      }
     } catch (err) {
       console.error("Failed to load sessions:", err);
       setError(err.message || "Failed to load sessions");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [currentOrganizationId]);
 
@@ -138,6 +149,18 @@ export default function Sessions() {
       loadSessionsData();
     }
   }, [authLoading, role, loadSessionsData]);
+
+  useEffect(() => {
+    if (authLoading || !currentOrganizationId) {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      loadSessionsData({ silent: true, preservePage: true });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [authLoading, currentOrganizationId, loadSessionsData]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -153,7 +176,7 @@ export default function Sessions() {
 
     try {
       await endSession(id, "manual");
-      await loadSessionsData();
+      await loadSessionsData({ preservePage: true });
       toast.success("Session stopped", "The session was ended successfully.");
     } catch (err) {
       console.error("Failed to end session:", err);
@@ -228,7 +251,7 @@ export default function Sessions() {
     try {
       await createSession(payload);
       setReservationModalOpen(false);
-      await loadSessionsData();
+      await loadSessionsData({ preservePage: true });
       toast.success("Reservation created", "The device reservation is now waiting for RFID authentication at the box.");
     } catch (err) {
       console.error("Failed to create reservation:", err);
