@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { register } from "../../api/auth";
 import { useAuth } from "../../auth/AuthContext";
+import { useToast } from "../../toast/ToastProvider";
 
 export default function RegistrationForm() {
   const navigate = useNavigate();
   const { refreshAuth } = useAuth();
+  const toast = useToast();
 
   const [form, setForm] = useState({
     email: "",
@@ -23,12 +25,12 @@ export default function RegistrationForm() {
 
   const handleSubmit = async () => {
     if (form.password !== form.confirm) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match", "Enter the same password in both fields.");
       return;
     }
 
     if (!form.email || !form.password) {
-      alert("Please fill in all fields");
+      toast.error("Missing fields", "Enter your email and password to create the admin account.");
       return;
     }
 
@@ -38,17 +40,17 @@ export default function RegistrationForm() {
       const result = await register(form.email, form.password);
 
       if (result.success) {
-        alert("Admin account created successfully");
+        toast.success("Admin account created", "You can now create your first organization.");
         const currentUser = await refreshAuth();
         const nextProfile = currentUser?.profile || null;
         const hasCurrentOrganization = Boolean(nextProfile?.currentOrganizationId);
         navigate(hasCurrentOrganization ? "/dashboard" : "/create-organization");
       } else {
-        alert(result.error?.message || "Registration failed");
+        toast.error("Registration failed", result.error?.message || "The account could not be created.");
       }
     } catch (err) {
       console.error("Registration error:", err);
-      alert("Server is not responding. Please try again later.");
+      toast.error("Connection error", err.message || "The server is not responding right now.");
     } finally {
       setLoading(false);
     }

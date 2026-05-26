@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../../toast/ToastProvider";
 
 export default function ForgotForm() {
   const [email, setEmail] = useState("");
   const navigate = useNavigate();
+  const toast = useToast();
 
   const handleSubmit = () => {
-    alert("If this email exists, a reset link has been sent.");
+    toast.info(
+      "Reset link requested",
+      "If this email exists, a password reset link has been sent."
+    );
   };
 
   return (

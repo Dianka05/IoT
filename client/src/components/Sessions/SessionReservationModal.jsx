@@ -97,9 +97,9 @@ export default function SessionReservationModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
       <form
         onSubmit={handleSubmit}
-        className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl"
       >
-        <div className="flex items-start justify-between border-b border-slate-100 px-8 py-7">
+        <div className="flex items-start justify-between border-b border-slate-100 px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-7">
           <div>
             <h2 className="text-2xl font-black text-slate-800">Create Reservation</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -116,7 +116,12 @@ export default function SessionReservationModal({
           </button>
         </div>
 
-        <div className="space-y-8 px-8 py-7">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-7">
+          <div className="space-y-8">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Choose one box, then select the free devices inside it. The reservation becomes active only after you tap this RFID card at the box.
+          </div>
+
           <div className="grid gap-8 md:grid-cols-2">
             <div>
               <FieldLabel>RFID Card UID</FieldLabel>
@@ -158,9 +163,12 @@ export default function SessionReservationModal({
               {!boxId ? (
                 <p className="text-sm text-slate-500">Select a box first.</p>
               ) : availableDevices.length === 0 ? (
-                <p className="text-sm text-slate-500">No reservable devices in this box.</p>
+                <p className="text-sm text-slate-500">No reservable devices in this box. The box may be offline, in maintenance, or have no assigned devices.</p>
               ) : (
                 <div className="space-y-3">
+                  <p className="text-xs font-semibold text-slate-400">
+                    Only devices that are free right now can be selected.
+                  </p>
                   <div className="flex flex-wrap gap-2">
                   {freeDevices.map((device) => {
                     const deviceId = device.deviceId || device.id;
@@ -219,14 +227,20 @@ export default function SessionReservationModal({
               )}
             </div>
           </div>
+          </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-8 py-6">
+        <div className="sticky bottom-0 flex flex-col gap-4 border-t border-slate-100 bg-white px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6">
+          <p className="text-xs leading-5 text-slate-500">
+            The reservation button stays disabled until you choose a box, select at least one free device, and have an active RFID card.
+          </p>
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl px-5 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             Cancel
           </button>
@@ -234,11 +248,12 @@ export default function SessionReservationModal({
           <button
             type="submit"
             disabled={submitting || !boxId || deviceIds.length === 0 || !activeCardUid}
-            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             <Plus size={16} />
             Create Reservation
           </button>
+          </div>
         </div>
       </form>
     </div>

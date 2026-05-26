@@ -15,6 +15,7 @@ import { canUseOperationsDashboard } from "../auth/roles";
 import { useAuth } from "../auth/AuthContext";
 import { getActiveCardUid } from "../utils/currentUser";
 import { getDisplayStatus } from "../utils/equipmentStatus";
+import { useToast } from "../toast/ToastProvider";
 
 function toMillis(timestamp) {
   if (!timestamp) return null;
@@ -87,6 +88,7 @@ function mapSessionRow(session, nowMs, deviceNameMap) {
 }
 
 export default function Sessions() {
+  const toast = useToast();
   const { role, profile, loading: authLoading, currentOrganizationId } = useAuth();
   const isOperationsRole = canUseOperationsDashboard(role);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -152,9 +154,11 @@ export default function Sessions() {
     try {
       await endSession(id, "manual");
       await loadSessionsData();
+      toast.success("Session stopped", "The session was ended successfully.");
     } catch (err) {
       console.error("Failed to end session:", err);
       setError(err.message || "Failed to end session");
+      toast.error("Stop failed", err.message || "The session could not be ended.");
     } finally {
       setTerminatingId("");
     }
@@ -225,9 +229,11 @@ export default function Sessions() {
       await createSession(payload);
       setReservationModalOpen(false);
       await loadSessionsData();
+      toast.success("Reservation created", "The device reservation is now waiting for RFID authentication at the box.");
     } catch (err) {
       console.error("Failed to create reservation:", err);
       setError(err.message || "Failed to create reservation");
+      toast.error("Reservation failed", err.message || "The reservation could not be created.");
     } finally {
       setSubmittingReservation(false);
     }
@@ -244,6 +250,21 @@ export default function Sessions() {
   const liveSessions = sessionsState.filter(
     (session) => session.status === "ACTIVE" || session.status === "PENDING"
   ).length;
+  const reservationDisabledReason = useMemo(() => {
+    if (!activeCardUid) {
+      return "You need at least one active RFID card before you can reserve equipment.";
+    }
+
+    if (allowedDeviceIds.size === 0) {
+      return "No devices are assigned to your account yet. Ask an admin or technician to grant device access.";
+    }
+
+    if (reservableBoxes.length === 0) {
+      return "No available boxes are ready right now. A box or device may be offline, in maintenance, reserved, or already in use.";
+    }
+
+    return "Choose a box first, then pick one or more available devices inside it.";
+  }, [activeCardUid, allowedDeviceIds, reservableBoxes]);
 
   if (authLoading) {
     return <LoadingScreen />;
@@ -287,6 +308,10 @@ export default function Sessions() {
             You need at least one active RFID card to create a reservation.
           </StatusBanner>
         )}
+
+        <StatusBanner className="border-slate-200 bg-slate-50 text-slate-600">
+          {reservationDisabledReason}
+        </StatusBanner>
 
         {loading && (
           <StatusBanner>

@@ -5,6 +5,7 @@ import { createOrganization } from '../api/organizations'
 import LoadingScreen from '../components/loadingScreen'
 import StatusBanner from '../components/statusBanner'
 import { useAuth } from '../auth/AuthContext'
+import { useToast } from '../toast/ToastProvider'
 
 function normalizeOrganizationId(value) {
   return String(value || '')
@@ -22,6 +23,7 @@ export default function CreateOrganization() {
     canCreateOrganizations,
     refreshAuth,
   } = useAuth()
+  const toast = useToast()
 
   const [form, setForm] = useState({
     name: '',
@@ -88,9 +90,11 @@ export default function CreateOrganization() {
       })
 
       await refreshAuth()
+      toast.success('Organization created', 'Your workspace is ready.')
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err.message || 'Failed to create organization')
+      toast.error('Create organization failed', err.message || 'The organization could not be created.')
     } finally {
       setSubmitting(false)
     }

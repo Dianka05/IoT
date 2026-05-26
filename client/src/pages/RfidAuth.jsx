@@ -11,12 +11,14 @@ import { getRfidCards, updateRfidCardStatus } from "../api/users";
 import { useAuth } from "../auth/AuthContext";
 import { canUseOperationsDashboard, getDefaultRouteForRole } from "../auth/roles";
 import { formatCardUid, formatRoleLabel } from "../utils/currentUser";
+import { useToast } from "../toast/ToastProvider";
 
 function normalizeUid(value) {
   return String(value || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
 }
 
 export default function RfidAuth() {
+  const toast = useToast();
   const { role, loading: authLoading, currentOrganizationId, currentOrganization } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -73,9 +75,16 @@ export default function RfidAuth() {
     try {
       await updateRfidCardStatus(card.uid, card.userId, status);
       await loadCards();
+      toast.success(
+        status === "blocked" ? "Card blocked" : "Card activated",
+        status === "blocked"
+          ? `RFID ${formatCardUid(card.uid)} can no longer be used.`
+          : `RFID ${formatCardUid(card.uid)} can be used again.`
+      );
     } catch (err) {
       console.error("Failed to update card status:", err);
       setError(err.message || "Failed to update card status");
+      toast.error("Update failed", err.message || "The card status could not be updated.");
     } finally {
       setUpdatingCardUid("");
     }

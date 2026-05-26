@@ -12,6 +12,7 @@ import {
 } from "../api/configuration";
 import { useAuth } from "../auth/AuthContext";
 import { canUseOperationsDashboard, getDefaultRouteForRole } from "../auth/roles";
+import { useToast } from "../toast/ToastProvider";
 
 function createFormState(source = {}) {
   return {
@@ -90,6 +91,7 @@ function RuleFields({ form, onChange, disabled = false }) {
 }
 
 export default function Configuration() {
+  const toast = useToast();
   const { role, loading: authLoading, currentOrganizationId } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [boxes, setBoxes] = useState([]);
@@ -202,10 +204,12 @@ export default function Configuration() {
       });
 
       setSuccess("Configuration saved.");
+      toast.success("Configuration saved", "The new security rules are now active for this organization.");
       await loadConfiguration();
     } catch (err) {
       console.error("Failed to save configuration:", err);
       setError(err.message || "Failed to save configuration");
+      toast.error("Save failed", err.message || "The configuration could not be saved.");
     } finally {
       setSaving(false);
     }

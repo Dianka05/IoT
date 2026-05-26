@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../../api/auth";
 import { useAuth } from "../../auth/AuthContext";
+import { useToast } from "../../toast/ToastProvider";
 
 export default function LoginForm() {
   const navigate = useNavigate();
   const { refreshAuth } = useAuth();
+  const toast = useToast();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
@@ -15,7 +17,7 @@ export default function LoginForm() {
 
   const handleSubmit = async () => {
     if (!form.email || !form.password) {
-      alert("Please fill in all fields");
+      toast.error("Missing fields", "Enter both email and password to continue.");
       return;
     }
 
@@ -24,7 +26,7 @@ export default function LoginForm() {
       const result = await login(form.email, form.password);
 
       if (result.success) {
-        alert("Login successful!");
+        toast.success("Login successful", "You are being redirected to your workspace.");
         const currentUser = await refreshAuth();
         const nextProfile = currentUser?.profile || null;
         const mustChangePassword = nextProfile?.mustChangePassword === true;
@@ -37,11 +39,11 @@ export default function LoginForm() {
               : "/create-organization"
         );
       } else {
-        alert(result.error?.message || "Login failed");
+        toast.error("Login failed", result.error?.message || "Check your credentials and try again.");
       }
     } catch (err) {
       console.error("Login error:", err);
-      alert("Connection error. Is the server running?");
+      toast.error("Connection error", err.message || "The server is not responding right now.");
     } finally {
       setLoading(false);
     }
