@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 
 import { changePassword } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
+import { useToast } from "../toast/ToastProvider";
 
 export default function ChangePassword() {
   const navigate = useNavigate();
   const { refreshAuth } = useAuth();
+  const toast = useToast();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,6 +34,7 @@ export default function ChangePassword() {
       await changePassword(password);
       const currentUser = await refreshAuth();
       const nextProfile = currentUser?.profile || null;
+      toast.success("Password updated", "Your temporary password has been replaced.");
 
       navigate(
         nextProfile?.currentOrganizationId ? "/dashboard" : "/create-organization"
@@ -39,6 +42,7 @@ export default function ChangePassword() {
     } catch (err) {
       console.error("Failed to change password:", err);
       setError(err.message || "Failed to change password");
+      toast.error("Password update failed", err.message || "The password could not be changed.");
     } finally {
       setLoading(false);
     }

@@ -14,6 +14,7 @@ import {
 import { canManageUsers, canUseOperationsDashboard } from '../auth/roles';
 import { useAuth } from '../auth/AuthContext';
 import { formatRoleLabel } from '../utils/currentUser';
+import { useToast } from '../toast/ToastProvider';
 
 function getRoleLabel(role, loading) {
   if (loading && !role) return 'Loading';
@@ -170,6 +171,7 @@ function SidebarContent({
 
 export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: userNameProp }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const [switchingOrganization, setSwitchingOrganization] = useState(false);
   const {
     profile,
@@ -192,10 +194,11 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
     try {
       await setCurrentOrganization(organizationId);
       setIsOpen(false);
+      toast.success("Organization switched", "The dashboard is now showing data for the selected organization.");
       navigate('/dashboard');
     } catch (err) {
       console.error('Failed to switch organization:', err);
-      alert(err.message || 'Failed to switch organization');
+      toast.error("Switch failed", err.message || "Could not switch the current organization.");
     } finally {
       setSwitchingOrganization(false);
     }

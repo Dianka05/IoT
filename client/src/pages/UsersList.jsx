@@ -22,6 +22,7 @@ import {
 } from "../api/users";
 import { canManageUsers, getDefaultRouteForRole } from "../auth/roles";
 import { useAuth } from "../auth/AuthContext";
+import { useToast } from "../toast/ToastProvider";
 
 const emptyModalState = {
   open: false,
@@ -65,6 +66,7 @@ function normalizeSessionDuration(value) {
 }
 
 export default function UsersList() {
+  const toast = useToast();
   const {
     role,
     loading: authLoading,
@@ -184,6 +186,7 @@ export default function UsersList() {
           password,
           allowedDeviceIds: values.allowedDeviceIds || [],
         });
+        toast.success("User created", "The new user can now log in with the temporary password you set.");
       } else {
         const userId =
           modalState.initialValues?.id ||
@@ -235,6 +238,8 @@ export default function UsersList() {
         if (JSON.stringify(nextAllowedDeviceIds) !== JSON.stringify(existingAllowedDeviceIds)) {
           await updateUserAllowedDeviceIds(userId, nextAllowedDeviceIds);
         }
+
+        toast.success("User updated", "The user details were saved.");
       }
 
       setModalState(emptyModalState);
@@ -242,6 +247,7 @@ export default function UsersList() {
     } catch (err) {
       console.error("Failed to save user:", err);
       setError(err.message || "Failed to save user");
+      toast.error("Save failed", err.message || "The user could not be saved.");
     } finally {
       setSubmitting(false);
     }
@@ -264,9 +270,11 @@ export default function UsersList() {
       await deleteUser(userId);
       setModalState(emptyModalState);
       await loadData();
+      toast.success("User deleted", "The user was removed from the organization.");
     } catch (err) {
       console.error("Failed to delete user:", err);
       setError(err.message || "Failed to delete user");
+      toast.error("Delete failed", err.message || "The user could not be deleted.");
     } finally {
       setDeleting(false);
     }

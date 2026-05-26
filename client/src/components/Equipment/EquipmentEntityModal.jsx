@@ -139,9 +139,9 @@ export default function EquipmentEntityModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
       <form
         onSubmit={handleSubmit}
-        className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl"
       >
-        <div className="flex items-start justify-between border-b border-slate-100 px-8 py-7">
+        <div className="flex items-start justify-between border-b border-slate-100 px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-7">
           <div>
             <h2 className="text-2xl font-black text-slate-800">
               {modalTitle}
@@ -160,7 +160,7 @@ export default function EquipmentEntityModal({
           </button>
         </div>
 
-        <div className="max-h-[calc(90vh-180px)] overflow-y-auto px-8 py-7">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-7">
           {entityType === "box" ? (
             <div className="space-y-8">
               <div className="grid gap-8 md:grid-cols-2">
@@ -358,26 +358,26 @@ export default function EquipmentEntityModal({
           )}
         </div>
 
-        <div className="flex flex-col gap-4 border-t border-slate-100 px-8 py-6 md:flex-row md:items-center md:justify-between">
+        <div className="sticky bottom-0 flex flex-col gap-4 border-t border-slate-100 bg-white px-4 py-4 sm:px-6 sm:py-5 md:flex-row md:items-center md:justify-between md:px-8 md:py-6">
           <div>
             {mode === "edit" && onDelete && (
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting || submitting}
-                className="text-sm font-semibold uppercase tracking-wide text-red-500 transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full text-left text-sm font-semibold uppercase tracking-wide text-red-500 transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
               >
                 Remove {entityType}
               </button>
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting || deleting}
-              className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl px-5 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               Cancel
             </button>
@@ -385,7 +385,7 @@ export default function EquipmentEntityModal({
             <button
               type="submit"
               disabled={submitting || deleting}
-              className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               <Plus size={16} />
               {mode === "edit" ? "Save Changes" : "Create"}

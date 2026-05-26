@@ -3,6 +3,7 @@ import Pagination from "./Pagination";
 import UserRow from "./UserRow";
 import SurfaceCard from "../surfaceCard";
 import { formatRoleLabel, getPreferredCardUid } from "../../utils/currentUser";
+import { useToast } from "../../toast/ToastProvider";
 
 function getUserId(user) {
   return user.id || user.userId || user.authUid;
@@ -79,6 +80,7 @@ export default function UserTable({
   onEditUser,
   onDeleteUser,
 }) {
+  const toast = useToast();
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [page, setPage] = useState(1);
 
@@ -115,7 +117,7 @@ export default function UserTable({
       setConfirmDelete(null);
     } catch (err) {
       console.error("Failed to delete user:", err);
-      alert(err.message || "Failed to delete user");
+      toast.error("Delete failed", err.message || "The user could not be deleted.");
     }
   };
 

@@ -21,6 +21,7 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { canUseOperationsDashboard } from "../auth/roles";
 import { getDisplayStatus } from "../utils/equipmentStatus";
+import { useToast } from "../toast/ToastProvider";
 
 function getDeviceId(device) {
   return device?.deviceId || device?.id || "";
@@ -99,6 +100,7 @@ const emptyModalState = {
 };
 
 const Equipment = () => {
+  const toast = useToast();
   const { profile, role, loading: authLoading, currentOrganizationId } = useAuth();
   const isOperationsRole = canUseOperationsDashboard(role);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -352,9 +354,16 @@ const Equipment = () => {
       await syncBoxesWithDevices(nextBoxes, nextDevices);
       setModalState(emptyModalState);
       await loadEquipment(true);
+      toast.success(
+        modalState.mode === "create" ? "Box created" : "Box updated",
+        modalState.mode === "create"
+          ? "The box is now available in the workspace."
+          : "The box settings were saved."
+      );
     } catch (err) {
       console.error("Failed to save box:", err);
       setError(err.message || "Failed to save box");
+      toast.error("Save failed", err.message || "The box could not be saved.");
     } finally {
       setSubmitting(false);
     }
@@ -424,9 +433,16 @@ const Equipment = () => {
       await syncBoxesWithDevices(boxes, nextDevices);
       setModalState(emptyModalState);
       await loadEquipment(true);
+      toast.success(
+        modalState.mode === "create" ? "Device created" : "Device updated",
+        modalState.mode === "create"
+          ? "The device is now available in the workspace."
+          : "The device settings were saved."
+      );
     } catch (err) {
       console.error("Failed to save device:", err);
       setError(err.message || "Failed to save device");
+      toast.error("Save failed", err.message || "The device could not be saved.");
     } finally {
       setSubmitting(false);
     }
@@ -471,9 +487,16 @@ const Equipment = () => {
 
       setModalState(emptyModalState);
       await loadEquipment(true);
+      toast.success(
+        modalState.entityType === "box" ? "Box deleted" : "Device deleted",
+        modalState.entityType === "box"
+          ? "The box was removed from the workspace."
+          : "The device was removed from the workspace."
+      );
     } catch (err) {
       console.error("Failed to delete entity:", err);
       setError(err.message || "Failed to delete item");
+      toast.error("Delete failed", err.message || "The item could not be deleted.");
     } finally {
       setDeleting(false);
     }
