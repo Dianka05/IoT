@@ -50,7 +50,23 @@ export default function SessionReservationModal({
     setBoxId(firstBoxId);
     setDeviceIds([]);
     setSessionDurationSec(String(defaultDurationSec || 1800));
-  }, [open, boxes, defaultDurationSec]);
+  }, [open, defaultDurationSec]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const currentBoxStillExists = boxes.some(
+      (box) => (box.boxId || box.id || "") === boxId
+    );
+
+    if (!boxId || !currentBoxStillExists) {
+      const firstBoxId = boxes[0]?.boxId || boxes[0]?.id || "";
+      setBoxId(firstBoxId);
+      setDeviceIds([]);
+    }
+  }, [open, boxes, boxId]);
 
   const availableDevices = useMemo(
     () => devices.filter((device) => (device.boxId || "") === boxId),
