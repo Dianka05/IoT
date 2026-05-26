@@ -31,7 +31,7 @@ async function handleAuthRequest(msg) {
     : null
 
   if (!cardAccess) {
-    await logAuthDenied({ uid, boxId }, 'uid_not_recognized')
+    await logAuthDenied({ uid, boxId, knownCard: false }, 'uid_not_recognized')
 
     return publishAuthResult(boxId, {
       uid,
@@ -49,6 +49,7 @@ async function handleAuthRequest(msg) {
         boxId,
         userId: recognizedUser.userId,
         userName: recognizedUser.name,
+        knownCard: true,
       },
       'blocked_card'
     )
@@ -68,6 +69,7 @@ async function handleAuthRequest(msg) {
         boxId,
         userId: recognizedUser.userId,
         userName: recognizedUser.name,
+        knownCard: true,
       },
       reason
     )
@@ -90,6 +92,7 @@ async function handleAuthRequest(msg) {
         boxId,
         userId: recognizedUser.userId,
         userName: recognizedUser.name,
+        knownCard: true,
       },
       'user_inactive'
     )
@@ -109,6 +112,7 @@ async function handleAuthRequest(msg) {
         boxId,
         userId: user.userId,
         userName: user.name,
+        knownCard: true,
       },
       'no_pending_session'
     )

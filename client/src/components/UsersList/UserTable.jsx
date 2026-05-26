@@ -188,7 +188,7 @@ export default function UserTable({
 
             <p className="mb-6 text-slate-600">
               Are you sure you want to delete this user? This will remove the
-              user from Firestore and Firebase Authentication.
+              user account and its access settings.
             </p>
 
             <div className="flex justify-end gap-3">
