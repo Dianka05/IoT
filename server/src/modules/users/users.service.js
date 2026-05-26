@@ -233,6 +233,44 @@ async function patchCurrentOrganization(userId, organizationId) {
   return normalizeUserProfile(updated, organizationId)
 }
 
+async function getUserByEmail(email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
+  if (!normalizedEmail) {
+    return null
+  }
+
+  try {
+    const authUser = await auth.getUserByEmail(normalizedEmail)
+    const existingProfile = await getUserByAuthUid(authUser.uid)
+
+    if (existingProfile) {
+      return existingProfile
+    }
+
+    const profile = {
+      userId: authUser.uid,
+      authUid: authUser.uid,
+      email: authUser.email || normalizedEmail,
+      name: authUser.displayName || null,
+      mustChangePassword: false,
+      organizationIds: [],
+      currentOrganizationId: null,
+      memberships: [],
+      sessionDurationSec: 1800,
+      cards: [],
+    }
+
+    await upsertUser(profile)
+    return getUserByAuthUid(authUser.uid)
+  } catch (err) {
+    if (err?.code === 'auth/user-not-found') {
+      return null
+    }
+
+    throw err
+  }
+}
+
 const seedData = [
   {
     userId: 'user123',
@@ -376,6 +414,7 @@ async function patchUserAllowedDeviceIds(uid, organizationId, allowedDeviceIds) 
 async function createUserAsAdmin(adminProfile, data) {
   const targetOrganizationId =
     data.organizationId || adminProfile.currentOrganizationId
+  const normalizedEmail = String(data.email || '').trim().toLowerCase()
 
   if (!targetOrganizationId) {
     throw new Error('ADMIN_ORGANIZATION_NOT_SET')
@@ -396,8 +435,63 @@ async function createUserAsAdmin(adminProfile, data) {
     normalizedAllowedDeviceIds
   )
 
+  const existingUser = await getUserByEmail(normalizedEmail)
+  if (existingUser) {
+    const existingCards = normalizeCards(existingUser.cards)
+    const nextCards = normalizeCards([
+      ...existingCards,
+      ...normalizeCards(data.cards),
+    ])
+    const existingOrganizations = getAccessibleOrganizationIds(existingUser)
+    const nextOrganizationIds = uniqueStrings([
+      ...existingOrganizations,
+      targetOrganizationId,
+    ])
+    const updatedMemberships = upsertMembership(existingUser, buildMembership({
+      organizationId: targetOrganizationId,
+      role: data.role || 'user',
+      active: data.active ?? true,
+      allowedDeviceIds: normalizedAllowedDeviceIds,
+    }))
+    const globalPatch = {
+      organizationIds: nextOrganizationIds,
+      memberships: updatedMemberships,
+      cards: nextCards,
+      updatedAt: undefined,
+    }
+
+    if (!existingUser.currentOrganizationId) {
+      globalPatch.currentOrganizationId = targetOrganizationId
+    }
+
+    if ((!existingUser.name || !String(existingUser.name).trim()) && data.name) {
+      globalPatch.name = data.name
+      await auth.updateUser(existingUser.authUid || existingUser.userId, {
+        displayName: data.name,
+      })
+    }
+
+    if (
+      (!Number.isFinite(Number(existingUser.sessionDurationSec)) ||
+        Number(existingUser.sessionDurationSec) <= 0) &&
+      data.sessionDurationSec
+    ) {
+      globalPatch.sessionDurationSec = data.sessionDurationSec
+    }
+
+    const patch = Object.fromEntries(
+      Object.entries(globalPatch).filter(([, value]) => value !== undefined)
+    )
+    const updated = await updateUserById(existingUser.userId || existingUser.id, patch)
+    return normalizeUserProfile(updated, targetOrganizationId)
+  }
+
+  if (!data.password || typeof data.password !== 'string' || !String(data.password).trim()) {
+    throw new Error('PASSWORD_REQUIRED_FOR_NEW_USER')
+  }
+
   const createdAuthUser = await auth.createUser({
-    email: data.email,
+    email: normalizedEmail,
     password: data.password,
     displayName: data.name || undefined,
   })
@@ -405,7 +499,7 @@ async function createUserAsAdmin(adminProfile, data) {
   const profile = {
     userId: createdAuthUser.uid,
     authUid: createdAuthUser.uid,
-    email: data.email,
+    email: normalizedEmail,
     name: data.name || null,
     mustChangePassword: true,
     organizationIds: [targetOrganizationId],
@@ -643,12 +737,42 @@ async function removeUserAsAdmin(adminProfile, uid) {
     return check
   }
 
-  await deleteUserById(uid)
+  const targetUser = await getUserById(uid)
+  if (!targetUser) {
+    return {
+      allowed: false,
+      reason: 'USER_NOT_FOUND',
+      user: null,
+    }
+  }
 
-  try {
-    await auth.deleteUser(uid)
-  } catch (err) {
-    console.error('Failed to delete Firebase Auth user:', err)
+  const organizationId = check.organizationId
+  const nextMemberships = (Array.isArray(targetUser.memberships) ? targetUser.memberships : [])
+    .filter((membership) => membership.organizationId !== organizationId)
+    .map(normalizeMembership)
+  const nextOrganizationIds = uniqueStrings(
+    getAccessibleOrganizationIds(targetUser).filter((item) => item !== organizationId)
+  )
+
+  if (nextOrganizationIds.length === 0) {
+    await deleteUserById(uid)
+
+    try {
+      await auth.deleteUser(uid)
+    } catch (err) {
+      console.error('Failed to delete Firebase Auth user:', err)
+    }
+  } else {
+    const nextCurrentOrganizationId =
+      targetUser.currentOrganizationId === organizationId
+        ? nextOrganizationIds[0]
+        : targetUser.currentOrganizationId
+
+    await updateUserById(uid, {
+      memberships: nextMemberships,
+      organizationIds: nextOrganizationIds,
+      currentOrganizationId: nextCurrentOrganizationId || null,
+    })
   }
 
   return {
@@ -705,6 +829,7 @@ module.exports = {
   findUserCardAccessForOrganization,
   findUserByAuthUid,
   ensureAuthUserProfile,
+  getUserByEmail,
   clearMustChangePassword,
   patchUser,
   patchUserAllowedDeviceIds,
