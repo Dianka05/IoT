@@ -256,7 +256,7 @@ export default function Sessions() {
     }
 
     if (allowedDeviceIds.size === 0) {
-      return "No devices are assigned to your account yet. Ask an admin or technician to grant device access.";
+      return "No devices are assigned to your account yet. Ask an administrator to grant device access.";
     }
 
     if (reservableBoxes.length === 0) {

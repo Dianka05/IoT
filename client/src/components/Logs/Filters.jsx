@@ -39,15 +39,15 @@ const Filters = ({ onFilter, onRefresh, eventTypeOptions = [] }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-slate-200"
+      className="mb-6 flex flex-wrap items-end gap-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm"
     >
       <div className="flex flex-col">
-        <label htmlFor="eventType" className="text-sm text-slate-600 mb-1">Event Type</label>
+        <label htmlFor="eventType" className="mb-1 text-sm text-slate-600">Event Type</label>
         <select
           id="eventType"
           value={eventType}
           onChange={(e) => setEventType(e.target.value)}
-          className="border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-orange-400"
         >
           <option value="">All</option>
           {eventTypeOptions.map((option) => (
@@ -59,52 +59,52 @@ const Filters = ({ onFilter, onRefresh, eventTypeOptions = [] }) => {
       </div>
 
       <div className="flex flex-col">
-        <label htmlFor="user" className="text-sm text-slate-600 mb-1">User</label>
+        <label htmlFor="user" className="mb-1 text-sm text-slate-600">User</label>
         <input
           id="user"
           type="text"
           value={user}
           onChange={(e) => setUser(e.target.value)}
           placeholder="Enter user name"
-          className="border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-orange-400"
         />
       </div>
 
       <div className="flex flex-col">
-        <label htmlFor="equipment" className="text-sm text-slate-600 mb-1">Equipment</label>
+        <label htmlFor="equipment" className="mb-1 text-sm text-slate-600">Equipment</label>
         <input
           id="equipment"
           type="text"
           value={equipment}
           onChange={(e) => setEquipment(e.target.value)}
           placeholder="Enter equipment name"
-          className="border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-orange-400"
         />
       </div>
 
       <div className="flex flex-col">
-        <label htmlFor="dateFrom" className="text-sm text-slate-600 mb-1">Date From</label>
+        <label htmlFor="dateFrom" className="mb-1 text-sm text-slate-600">Date From</label>
         <input
           id="dateFrom"
           type="date"
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
-          className="border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-orange-400"
         />
       </div>
 
       <div className="flex flex-col">
-        <label htmlFor="dateTo" className="text-sm text-slate-600 mb-1">Date To</label>
+        <label htmlFor="dateTo" className="mb-1 text-sm text-slate-600">Date To</label>
         <input
           id="dateTo"
           type="date"
           value={dateTo}
           onChange={(e) => setDateTo(e.target.value)}
-          className="border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-orange-400"
         />
       </div>
 
-      <div className="flex gap-3 ml-auto">
+      <div className="ml-auto flex gap-3">
 
         <button
           type="submit"
@@ -113,7 +113,7 @@ const Filters = ({ onFilter, onRefresh, eventTypeOptions = [] }) => {
             border border-slate-200
             ${filterPressed
               ? "bg-slate-300 text-slate-900 shadow-lg shadow-slate-400/50"
-              : "bg-blue-600 text-white hover:bg-blue-700"
+              : "bg-orange-500 text-white hover:bg-orange-600"
             }
           `}
         >

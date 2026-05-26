@@ -17,6 +17,16 @@ function normalizeUid(value) {
   return String(value || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
 }
 
+const SEARCH_FIELD_OPTIONS = [
+  { value: "all", label: "All Fields" },
+  { value: "uid", label: "Card UID" },
+  { value: "name", label: "User Name" },
+  { value: "email", label: "Email" },
+  { value: "role", label: "Role" },
+  { value: "access", label: "Access" },
+  { value: "status", label: "Card Status" },
+];
+
 export default function RfidAuth() {
   const toast = useToast();
   const { role, loading: authLoading, currentOrganizationId, currentOrganization } = useAuth();
@@ -27,8 +37,11 @@ export default function RfidAuth() {
   const [refreshing, setRefreshing] = useState(false);
   const [updatingCardUid, setUpdatingCardUid] = useState("");
   const [error, setError] = useState("");
-  const [query, setQuery] = useState(searchParams.get("uid") || "");
+  const [query, setQuery] = useState(searchParams.get("q") || searchParams.get("uid") || "");
   const highlightedUid = normalizeUid(searchParams.get("uid") || "");
+  const [searchField, setSearchField] = useState(
+    searchParams.get("field") || (highlightedUid ? "uid" : "all")
+  );
 
   const loadCards = useCallback(async () => {
     if (!currentOrganizationId) {
@@ -53,7 +66,8 @@ export default function RfidAuth() {
   }, [currentOrganizationId]);
 
   useEffect(() => {
-    setQuery(searchParams.get("uid") || "");
+    setQuery(searchParams.get("q") || searchParams.get("uid") || "");
+    setSearchField(searchParams.get("field") || (searchParams.get("uid") ? "uid" : "all"));
   }, [searchParams]);
 
   useEffect(() => {
@@ -91,21 +105,70 @@ export default function RfidAuth() {
   };
 
   const filteredCards = useMemo(() => {
-    const normalizedQuery = normalizeUid(query);
-    const textQuery = String(query || "").trim().toLowerCase();
+    const rawQuery = String(query || "").trim();
 
+    if (!rawQuery) {
+      return cards;
+    }
+
+    const normalizedQuery = normalizeUid(rawQuery);
+    const textQuery = rawQuery.toLowerCase();
+    
     return cards.filter((card) => {
-      if (!query) {
-        return true;
-      }
+      const uid = String(card.uid || "");
+      const normalizedUid = normalizeUid(uid);
+      const formattedUid = formatCardUid(uid).toLowerCase();
+      const name = String(card.userName || "").toLowerCase();
+      const email = String(card.email || "").toLowerCase();
+      const roleText = formatRoleLabel(card.role).toLowerCase();
+      const statusText = String(card.status || "").toLowerCase();
+      const accessText = card.active ? "active" : "inactive";
 
-      return (
-        normalizeUid(card.uid).includes(normalizedQuery) ||
-        String(card.userName || "").toLowerCase().includes(textQuery) ||
-        String(card.email || "").toLowerCase().includes(textQuery)
-      );
+      switch (searchField) {
+        case "uid":
+          return normalizedUid.includes(normalizedQuery) || formattedUid.includes(textQuery);
+        case "name":
+          return name.includes(textQuery);
+        case "email":
+          return email.includes(textQuery);
+        case "role":
+          return roleText.includes(textQuery);
+        case "access":
+          return accessText.includes(textQuery);
+        case "status":
+          return statusText.includes(textQuery);
+        default:
+          return (
+            normalizedUid.includes(normalizedQuery) ||
+            formattedUid.includes(textQuery) ||
+            name.includes(textQuery) ||
+            email.includes(textQuery) ||
+            roleText.includes(textQuery) ||
+            statusText.includes(textQuery) ||
+            accessText.includes(textQuery)
+          );
+      }
     });
-  }, [cards, query]);
+  }, [cards, query, searchField]);
+
+  const searchPlaceholder = useMemo(() => {
+    switch (searchField) {
+      case "uid":
+        return "Search by card UID";
+      case "name":
+        return "Search by user name";
+      case "email":
+        return "Search by email";
+      case "role":
+        return "Search by role";
+      case "access":
+        return "Search by access state";
+      case "status":
+        return "Search by card status";
+      default:
+        return "Search by card UID, user name, or email";
+    }
+  }, [searchField]);
 
   const stats = useMemo(() => {
     const active = cards.filter((card) => card.status === "active").length;
@@ -170,17 +233,80 @@ export default function RfidAuth() {
 
       <SurfaceCard className="p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by card UID, user name, or email"
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:border-orange-400"
-            />
+          <div className="flex w-full flex-col gap-3 md:max-w-2xl md:flex-row">
+            <select
+              value={searchField}
+              onChange={(event) => {
+                const nextField = event.target.value;
+                setSearchField(nextField);
+
+                const nextParams = new URLSearchParams(searchParams);
+                if (nextField === "all") {
+                  nextParams.delete("field");
+                } else {
+                  nextParams.set("field", nextField);
+                }
+
+                if (query.trim()) {
+                  nextParams.set("q", query.trim());
+                } else {
+                  nextParams.delete("q");
+                }
+
+                if (nextField !== "uid") {
+                  nextParams.delete("uid");
+                } else if (query.trim()) {
+                  nextParams.set("uid", normalizeUid(query));
+                }
+
+                setSearchParams(nextParams);
+              }}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-orange-400 md:w-52"
+            >
+              {SEARCH_FIELD_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <div className="relative w-full">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                value={query}
+                onChange={(event) => {
+                  const nextQuery = event.target.value;
+
+                  setQuery(nextQuery);
+
+                  const nextParams = new URLSearchParams(searchParams);
+                  if (searchField !== "all") {
+                    nextParams.set("field", searchField);
+                  } else {
+                    nextParams.delete("field");
+                  }
+
+                  if (nextQuery.trim()) {
+                    nextParams.set("q", nextQuery.trim());
+                  } else {
+                    nextParams.delete("q");
+                  }
+
+                  if (searchField === "uid" && nextQuery.trim()) {
+                    nextParams.set("uid", normalizeUid(nextQuery));
+                  } else {
+                    nextParams.delete("uid");
+                  }
+
+                  setSearchParams(nextParams);
+                }}
+                placeholder={searchPlaceholder}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:border-orange-400"
+              />
+            </div>
           </div>
 
           {highlightedUid && (
@@ -189,6 +315,7 @@ export default function RfidAuth() {
               onClick={() => {
                 setSearchParams({});
                 setQuery("");
+                setSearchField("all");
               }}
               className="rounded-xl border border-orange-200 px-4 py-2 text-sm font-semibold text-orange-500 transition hover:bg-orange-50"
             >

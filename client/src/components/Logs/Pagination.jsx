@@ -60,7 +60,7 @@ export default function Pagination({ totalItems, perPage = 6, page, setPage }) {
             className={`
               rounded-lg px-3 py-1 text-sm font-medium transition
               ${item === page
-                ? "bg-blue-600 text-white"
+                ? "bg-orange-500 text-white"
                 : "border border-slate-200 bg-white hover:bg-slate-100"}
               ${item === "..." ? "cursor-default" : ""}
             `}

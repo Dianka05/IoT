@@ -71,11 +71,13 @@ export function AuthProvider({ children }) {
     const canCreateOrganizations =
       normalizedRole === 'admin' || !hasOrganizations
     const mustChangePassword = profile?.mustChangePassword === true
+    const isProfileActive = profile?.active !== false
 
     return {
       authUser,
       profile,
       isAuthenticated: Boolean(authUser?.auth?.uid),
+      isProfileActive,
       organizations,
       currentOrganization,
       currentOrganizationId,
