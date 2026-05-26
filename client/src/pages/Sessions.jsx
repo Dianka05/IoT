@@ -151,7 +151,7 @@ export default function Sessions() {
   }, [authLoading, role, loadSessionsData]);
 
   useEffect(() => {
-    if (authLoading || !currentOrganizationId) {
+    if (authLoading || !currentOrganizationId || reservationModalOpen) {
       return undefined;
     }
 
@@ -160,7 +160,7 @@ export default function Sessions() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [authLoading, currentOrganizationId, loadSessionsData]);
+  }, [authLoading, currentOrganizationId, loadSessionsData, reservationModalOpen]);
 
   useEffect(() => {
     const interval = setInterval(() => {
