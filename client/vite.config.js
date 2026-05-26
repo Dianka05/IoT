@@ -14,7 +14,7 @@ export default defineConfig({
       //   changeOrigin: true,
       // },
       '/api': {
-        target: 'https://iot-backend-delta-five.vercel.app',
+        target: 'https://hopeful-integrity-production-6100.up.railway.app',
         changeOrigin: true,
       },
     },
