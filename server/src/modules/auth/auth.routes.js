@@ -14,14 +14,26 @@ const { sendSuccessResponse } = require('../../responses/default.response')
 
 const router = express.Router()
 
-function getCookieOptions() {
-  const isProduction = process.env.NODE_ENV === 'production'
+function getCookieOptions(req) {
+  const origin = String(req?.headers?.origin || '')
+  const isLocalhost =
+    origin.startsWith('http://localhost') ||
+    origin.startsWith('http://127.0.0.1') ||
+    origin.startsWith('https://localhost') ||
+    origin.startsWith('https://127.0.0.1')
+  const forceSecureCookies = process.env.FORCE_SECURE_COOKIES === 'true'
+  const crossSiteHttps = origin.startsWith('https://') && !isLocalhost
+  const useSecureCookie =
+    forceSecureCookies ||
+    crossSiteHttps ||
+    process.env.NODE_ENV === 'production'
 
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: useSecureCookie,
+    sameSite: useSecureCookie ? 'none' : 'lax',
     maxAge: COOKIE_MAX_AGE_MS,
+    path: '/',
   }
 }
 
@@ -80,7 +92,7 @@ router.post('/auth/register', async (req, res, next) => {
     const result = await registerUser({ email, password, name })
     const sessionCookie = await createSessionCookie(result.idToken)
 
-    res.cookie(COOKIE_NAME, sessionCookie, getCookieOptions())
+    res.cookie(COOKIE_NAME, sessionCookie, getCookieOptions(req))
 
     sendSuccessResponse(res, {
         item: {
@@ -135,7 +147,7 @@ router.post('/auth/login', async (req, res, next) => {
     const result = await loginUser({ email, password })
     const sessionCookie = await createSessionCookie(result.idToken)
 
-    res.cookie(COOKIE_NAME, sessionCookie, getCookieOptions())
+    res.cookie(COOKIE_NAME, sessionCookie, getCookieOptions(req))
 
     sendSuccessResponse(res, {
       item: {
@@ -163,7 +175,7 @@ router.post('/auth/login', async (req, res, next) => {
  *               $ref: '#/components/schemas/SuccessResponse'
  */
 router.post('/auth/logout', async (req, res) => {
-  res.clearCookie(COOKIE_NAME)
+  res.clearCookie(COOKIE_NAME, getCookieOptions(req))
   sendSuccessResponse(res, {
     message: 'Logged out successfully',
   })
