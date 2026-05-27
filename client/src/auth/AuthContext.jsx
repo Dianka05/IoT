@@ -53,6 +53,13 @@ export function AuthProvider({ children }) {
     return refreshAuth()
   }, [refreshAuth])
 
+  const clearAuth = useCallback(() => {
+    setAuthUser(null)
+    setOrganizations([])
+    setError('')
+    setLoading(false)
+  }, [])
+
   useEffect(() => {
     refreshAuth()
   }, [refreshAuth])
@@ -90,8 +97,9 @@ export function AuthProvider({ children }) {
       error,
       refreshAuth,
       setCurrentOrganization,
+      clearAuth,
     }
-  }, [authUser, organizations, loading, error, refreshAuth, setCurrentOrganization])
+  }, [authUser, organizations, loading, error, refreshAuth, setCurrentOrganization, clearAuth])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
