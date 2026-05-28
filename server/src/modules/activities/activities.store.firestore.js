@@ -25,6 +25,7 @@ function mapDoc(doc) {
 async function upsertActivity({ type, entityId, activityType, organizationId, payload }) {
   const docId = buildActivityDocId(type, entityId, activityType)
   const docRef = db.collection('activities').doc(docId)
+  const now = new Date()
 
   await docRef.set(
     {
@@ -39,7 +40,16 @@ async function upsertActivity({ type, entityId, activityType, organizationId, pa
     { merge: true },
   )
 
-  return getActivityByDocId(docId)
+  return {
+    id: docId,
+    docId,
+    type,
+    entityId,
+    activityType,
+    organizationId: organizationId || null,
+    payload,
+    updatedAt: now,
+  }
 }
 
 async function getActivityByDocId(docId) {

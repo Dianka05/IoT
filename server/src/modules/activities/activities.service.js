@@ -18,6 +18,12 @@ const {
 } = require('../configuration/configuration.service')
 const { logSuspiciousPresence } = require('../logs/logs.service')
 
+const STATUS_PERSIST_INTERVAL_MS = Number(process.env.STATUS_PERSIST_INTERVAL_MS || 15000)
+const ENTITY_CACHE_TTL_MS = 5 * 60 * 1000
+const boxCache = new Map()
+const deviceCache = new Map()
+const statusWriteCache = new Map()
+
 function toMillis(timestamp) {
   if (!timestamp) return null
   if (typeof timestamp?.toMillis === 'function') {
@@ -38,6 +44,64 @@ function toMillis(timestamp) {
 function toNullableNumber(value) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function getCachedEntity(cache, id) {
+  const cached = cache.get(id)
+  if (!cached) return null
+
+  if (Date.now() - cached.createdAt > ENTITY_CACHE_TTL_MS) {
+    cache.delete(id)
+    return null
+  }
+
+  return cached.value
+}
+
+function setCachedEntity(cache, id, value) {
+  cache.set(id, {
+    createdAt: Date.now(),
+    value,
+  })
+}
+
+function buildStatusFingerprint(snapshot, payload = {}) {
+  return JSON.stringify({
+    status: snapshot.status || null,
+    online: snapshot.connectivity?.online ?? null,
+    wifi: snapshot.connectivity?.wifi ?? null,
+    mqtt: snapshot.connectivity?.mqtt ?? null,
+    mode: snapshot.connectivity?.mode ?? null,
+    reportedStatus: snapshot.connectivity?.reportedStatus ?? null,
+    temperatureC: toNullableNumber(payload.temperatureC),
+    humidity: toNullableNumber(payload.humidity),
+    motion: payload.motion === true,
+    distanceCm: toNullableNumber(payload.distanceCm),
+    activeSessions: toNullableNumber(payload.activeSessions),
+  })
+}
+
+function shouldPersistStatus(entityKey, fingerprint) {
+  const cached = statusWriteCache.get(entityKey)
+  const nowMs = Date.now()
+
+  if (!cached) {
+    statusWriteCache.set(entityKey, {
+      fingerprint,
+      lastPersistAt: nowMs,
+    })
+    return true
+  }
+
+  if (cached.fingerprint !== fingerprint || nowMs - cached.lastPersistAt >= STATUS_PERSIST_INTERVAL_MS) {
+    statusWriteCache.set(entityKey, {
+      fingerprint,
+      lastPersistAt: nowMs,
+    })
+    return true
+  }
+
+  return false
 }
 
 async function evaluateSuspiciousPresence(box, payload) {
@@ -149,19 +213,33 @@ async function resolveActivityOrganizationId(type, entityId) {
 }
 
 async function recordBoxStatus(boxId, payload) {
-  const activity = await upsertActivity({
-    type: 'box',
-    entityId: boxId,
-    activityType: 'status',
-    organizationId: await resolveActivityOrganizationId('box', boxId),
-    payload,
-  })
+  const cachedBox = getCachedEntity(boxCache, boxId)
+  const box = cachedBox || await getBoxById(boxId)
+  if (box) {
+    setCachedEntity(boxCache, boxId, box)
+  }
 
-  const box = await getBoxById(boxId)
   if (box) {
     const snapshot = deriveConnectivityState(payload, box)
+    const fingerprint = buildStatusFingerprint(snapshot, payload)
+    const persist = shouldPersistStatus(`box:${boxId}`, fingerprint)
 
-    await updateBoxById(boxId, {
+    if (!persist) {
+      return {
+        skipped: true,
+        boxId,
+      }
+    }
+
+    const activity = await upsertActivity({
+      type: 'box',
+      entityId: boxId,
+      activityType: 'status',
+      organizationId: box.organizationId || null,
+      payload,
+    })
+
+    const updatedBox = await updateBoxById(boxId, {
       status: snapshot.status,
       statusOverride: box.statusOverride || null,
       lastSeenAt: FieldValue.serverTimestamp(),
@@ -171,14 +249,30 @@ async function recordBoxStatus(boxId, payload) {
       },
       lastStatusPayload: payload,
     })
+    if (updatedBox) {
+      setCachedEntity(boxCache, boxId, updatedBox)
+    }
 
     await evaluateSuspiciousPresence(box, payload)
+    return activity
   }
 
-  return activity
+  return null
 }
 
 async function recordBoxSessions(boxId, payload) {
+  const fingerprint = JSON.stringify({
+    count: toNullableNumber(payload?.count),
+    items: Array.isArray(payload?.items) ? payload.items : [],
+  })
+  const persist = shouldPersistStatus(`box-sessions:${boxId}`, fingerprint)
+  if (!persist) {
+    return {
+      skipped: true,
+      boxId,
+    }
+  }
+
   return upsertActivity({
     type: 'box',
     entityId: boxId,
@@ -189,19 +283,33 @@ async function recordBoxSessions(boxId, payload) {
 }
 
 async function recordDeviceStatus(deviceId, payload) {
-  const activity = await upsertActivity({
-    type: 'device',
-    entityId: deviceId,
-    activityType: 'status',
-    organizationId: await resolveActivityOrganizationId('device', deviceId),
-    payload,
-  })
+  const cachedDevice = getCachedEntity(deviceCache, deviceId)
+  const device = cachedDevice || await getDeviceById(deviceId)
+  if (device) {
+    setCachedEntity(deviceCache, deviceId, device)
+  }
 
-  const device = await getDeviceById(deviceId)
   if (device) {
     const snapshot = deriveConnectivityState(payload, device)
+    const fingerprint = buildStatusFingerprint(snapshot, payload)
+    const persist = shouldPersistStatus(`device:${deviceId}`, fingerprint)
 
-    await updateDeviceById(deviceId, {
+    if (!persist) {
+      return {
+        skipped: true,
+        deviceId,
+      }
+    }
+
+    const activity = await upsertActivity({
+      type: 'device',
+      entityId: deviceId,
+      activityType: 'status',
+      organizationId: device.organizationId || null,
+      payload,
+    })
+
+    const updatedDevice = await updateDeviceById(deviceId, {
       status: snapshot.status,
       statusOverride: device.statusOverride || null,
       lastSeenAt: FieldValue.serverTimestamp(),
@@ -211,9 +319,14 @@ async function recordDeviceStatus(deviceId, payload) {
       },
       lastStatusPayload: payload,
     })
+    if (updatedDevice) {
+      setCachedEntity(deviceCache, deviceId, updatedDevice)
+    }
+
+    return activity
   }
 
-  return activity
+  return null
 }
 
 async function recordDeviceFanState(deviceId, payload) {

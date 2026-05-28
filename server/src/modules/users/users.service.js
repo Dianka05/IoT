@@ -10,7 +10,9 @@ const {
   updateUserById,
   deleteUserById,
 } = require('./users.store.firestore')
-const { getDeviceById } = require('../devices/fan-1/devices.store.firestore')
+const {
+  getDevicesByIds,
+} = require('../devices/fan-1/devices.store.firestore')
 
 function uniqueStrings(values = []) {
   return [...new Set(values.filter(Boolean).map((value) => String(value)))]
@@ -176,8 +178,12 @@ function upsertMembership(user, membership) {
 }
 
 async function assertAllowedDevicesInOrganization(organizationId, allowedDeviceIds = []) {
-  for (const deviceId of uniqueStrings(allowedDeviceIds)) {
-    const device = await getDeviceById(deviceId)
+  const normalizedDeviceIds = uniqueStrings(allowedDeviceIds)
+  const devices = await getDevicesByIds(normalizedDeviceIds)
+  const deviceMap = new Map(devices.map((device) => [String(device.deviceId || device.id), device]))
+
+  for (const deviceId of normalizedDeviceIds) {
+    const device = deviceMap.get(deviceId)
 
     if (!device) {
       throw new Error(`DEVICE_NOT_FOUND:${deviceId}`)

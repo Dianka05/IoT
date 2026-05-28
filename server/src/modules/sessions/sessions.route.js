@@ -52,7 +52,7 @@ router.get('/sessions/:sessionId', requireAuth, requireUserProfile, requireOrgan
 
 router.post('/sessions', requireAuth, requireUserProfile, requireOrganizationContext, async (req, res, next) => {
   try {
-    const { boxId, uid, deviceIds, sessionDurationSec, mode } = req.body || {}
+    const { boxId, uid, deviceIds, sessionDurationSec, mode, scheduledStartAt } = req.body || {}
 
     if (!boxId || typeof boxId !== 'string') {
       return next(Errors.BadRequest('`boxId` must be a non-empty string'))
@@ -72,6 +72,7 @@ router.post('/sessions', requireAuth, requireUserProfile, requireOrganizationCon
       deviceIds,
       sessionDurationSec,
       mode,
+      scheduledStartAt,
     })
 
     sendSuccessResponse(res, { item: session })
@@ -86,11 +87,17 @@ router.post('/sessions', requireAuth, requireUserProfile, requireOrganizationCon
     }
 
     if (
+      message.includes('Reservation cannot be created in the past') ||
+      message.includes('Scheduled reservations must be created at least 1 minute in advance') ||
+      message.includes('Reservations cannot be scheduled more than 7 days ahead') ||
       message.includes('Device not found') ||
       message.includes('Device is outside organization') ||
       message.includes('Device does not belong to box') ||
       message.includes('Device is not allowed for user') ||
-      message.includes('Device is busy') ||
+      message.includes('Device is currently in use') ||
+      message.includes('Device already has a future reservation') ||
+      message.includes('Device is waiting for RFID confirmation') ||
+      message.includes('Device is still held by another unfinished reservation') ||
       message.includes('Device is in maintenance mode') ||
       message.includes('Device is not available') ||
       message.includes('Box is in maintenance mode') ||

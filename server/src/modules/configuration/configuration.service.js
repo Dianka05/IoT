@@ -11,6 +11,8 @@ const DEFAULT_PRESENCE_DETECTION = {
   deniedAccessLookbackSec: 120,
   suspiciousPresenceCooldownSec: 180,
 }
+const CONFIG_CACHE_TTL_MS = 60 * 1000
+const configurationCache = new Map()
 
 function toBoolean(value, fallback) {
   if (value === undefined || value === null) {
@@ -74,8 +76,20 @@ function normalizeConfiguration(configuration = {}, organizationId = null) {
 }
 
 async function getConfigurationForOrganization(organizationId) {
+  const cached = configurationCache.get(organizationId)
+  const nowMs = Date.now()
+
+  if (cached && nowMs - cached.createdAt <= CONFIG_CACHE_TTL_MS) {
+    return cached.value
+  }
+
   const current = await getConfigurationByOrganizationId(organizationId)
-  return normalizeConfiguration(current || {}, organizationId)
+  const normalized = normalizeConfiguration(current || {}, organizationId)
+  configurationCache.set(organizationId, {
+    createdAt: nowMs,
+    value: normalized,
+  })
+  return normalized
 }
 
 async function saveConfigurationForOrganization(organizationId, patch = {}) {
@@ -93,7 +107,12 @@ async function saveConfigurationForOrganization(organizationId, patch = {}) {
   }
 
   const saved = await upsertConfigurationByOrganizationId(organizationId, next)
-  return normalizeConfiguration(saved, organizationId)
+  const normalized = normalizeConfiguration(saved, organizationId)
+  configurationCache.set(organizationId, {
+    createdAt: Date.now(),
+    value: normalized,
+  })
+  return normalized
 }
 
 async function getPresenceDetectionConfigForBox(organizationId, boxId) {

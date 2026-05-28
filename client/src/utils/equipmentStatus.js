@@ -139,7 +139,7 @@ export function getDisplayStatus(entity = {}) {
     return "in_use";
   }
 
-  if (occupancyStatus === "pending") {
+  if (occupancyStatus === "ready_for_auth" || occupancyStatus === "missed") {
     return "reserved";
   }
 
