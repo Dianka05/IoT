@@ -1,32 +1,24 @@
 import { Info } from "lucide-react";
+import SurfaceCard from "../surfaceCard";
 
 export default function ReminderEquipment() {
   return (
-    <div
+    <SurfaceCard
       className="
-        mt-8 p-5 rounded-xl border border-slate-200 shadow-sm
-        bg-[#fdf7ee]   /* мягкий бежевый фон */
-        flex items-start gap-4
+        mt-8 flex items-start gap-4 border border-[#ec5b131a]
+        bg-[#ec5b130d] p-5 shadow-sm
       "
     >
-      <div
-        className="
-          h-8 w-8 rounded-full bg-white border border-slate-300
-          flex items-center justify-center
-          text-slate-600
-        "
-      >
-        <Info size={18} />
-      </div>
+      <Info size={18} color="#FF8C00" />
 
       <div className="flex flex-col">
-        <p className="font-semibold text-slate-900 text-sm">
-          Security Policy Reminder
+        <p className="text-sm font-semibold text-slate-900">
+          Access Reminder
         </p>
-        <p className="text-slate-700 text-sm mt-1 leading-snug">
-          Every “Approve” is logged with timestamps and user IDs.
+        <p className="mt-1 text-sm leading-snug text-slate-700">
+          If something looks unavailable, it may already be reserved, in use, offline, or under maintenance.
         </p>
       </div>
-    </div>
+    </SurfaceCard>
   );
 }

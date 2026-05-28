@@ -1,43 +1,121 @@
-const { v4: uuidv4 } = require('uuid')
-
+const { randomUUID } = require('crypto')
 const store = require('./sessions.store.firestore')
+const { publishEndSession, publishAuthResult } = require('../boxes/main-box/boxes.service')
+const { publishDeviceAccessSet, publishDeviceEndSession } = require('../devices/fan-1/device.service')
 const {
-  publishEndSession,
-  publishAuthResult,
-} = require('../boxes/main-box/boxes.service')
-const {
-  publishDeviceAccessSet,
-  publishDeviceEndSession,
-} = require('../devices/fan-1/device.service')
-
-
-const {
-  logAuthRequestReceived,
   logAuthDenied,
   logAuthGranted,
   logSessionStarted,
   logSessionEnded,
 } = require('../logs/logs.service')
+const {
+  findActiveUserByUidForOrganization,
+  findUserCardAccessForOrganization,
+} = require('../users/users.service')
+const { getBoxById } = require('../boxes/main-box/boxes.store.firestore')
+const { getDeviceById } = require('../devices/fan-1/devices.store.firestore')
 
-const { findActiveUserByUid } = require('../users/users.service')
+function normalizeEntityStatus(entity = {}) {
+  if (entity?.active === false) {
+    return 'disabled'
+  }
+
+  return String(entity?.status || '').trim().toLowerCase()
+}
 
 async function handleAuthRequest(msg) {
   const { uid, boxId } = msg.payload
+  const box = await getBoxById(boxId)
+  const cardAccess = box?.organizationId
+    ? await findUserCardAccessForOrganization(uid, box.organizationId)
+    : null
 
-  const user = await findActiveUserByUid(uid)
-  if (!user) {
-    await logAuthDenied({ uid, boxId }, 'UID not recognized or user inactive')
+  if (!cardAccess) {
+    await logAuthDenied({ uid, boxId, knownCard: false }, 'uid_not_recognized')
 
     return publishAuthResult(boxId, {
       uid,
       allowed: false,
-      reason: 'UID not recognized or user inactive',
+      reason: 'uid_not_recognized',
+    })
+  }
+
+  const { user: recognizedUser, card } = cardAccess
+
+  if (card.status === 'blocked') {
+    await logAuthDenied(
+      {
+        uid,
+        boxId,
+        userId: recognizedUser.userId,
+        userName: recognizedUser.name,
+        knownCard: true,
+      },
+      'blocked_card'
+    )
+
+    return publishAuthResult(boxId, {
+      uid,
+      allowed: false,
+      reason: 'blocked_card',
+    })
+  }
+
+  if (card.status !== 'active') {
+    const reason = `card_status_${card.status}`
+    await logAuthDenied(
+      {
+        uid,
+        boxId,
+        userId: recognizedUser.userId,
+        userName: recognizedUser.name,
+        knownCard: true,
+      },
+      reason
+    )
+
+    return publishAuthResult(boxId, {
+      uid,
+      allowed: false,
+      reason,
+    })
+  }
+
+  const user = box?.organizationId
+    ? await findActiveUserByUidForOrganization(uid, box.organizationId)
+    : null
+
+  if (!user) {
+    await logAuthDenied(
+      {
+        uid,
+        boxId,
+        userId: recognizedUser.userId,
+        userName: recognizedUser.name,
+        knownCard: true,
+      },
+      'user_inactive'
+    )
+
+    return publishAuthResult(boxId, {
+      uid,
+      allowed: false,
+      reason: 'user_inactive',
     })
   }
 
   const session = await store.findPendingSessionForAuth(uid, boxId)
   if (!session) {
-    await logAuthDenied({ uid, boxId }, 'no_pending_session')
+    await logAuthDenied(
+      {
+        uid,
+        boxId,
+        userId: user.userId,
+        userName: user.name,
+        knownCard: true,
+      },
+      'no_pending_session'
+    )
 
     return publishAuthResult(boxId, {
       uid,
@@ -63,8 +141,6 @@ async function handleAuthRequest(msg) {
 }
 
 async function handleSessionStarted(msg) {
-  console.log('Session started: ', msg.payload)
-
   const { sessionId } = msg.payload
   if (!sessionId) return null
 
@@ -79,18 +155,19 @@ async function handleSessionStarted(msg) {
       )
     }
 
-    await logSessionStarted({
-      boxId: session.boxId,
-      sessionId: session.sessionId,
-    })
+    await logSessionStarted(
+      {
+        boxId: session.boxId,
+        sessionId: session.sessionId,
+      },
+      session
+    )
   }
-  return session
 
+  return session
 }
 
 async function handleSessionEnded(msg) {
-  console.log('Session ended: ', msg.payload)
-
   const { sessionId } = msg.payload
   if (!sessionId) return null
 
@@ -101,10 +178,33 @@ async function handleSessionEnded(msg) {
     }
   }
 
-  const session = await store.endSession(sessionId)
-  await logSessionEnded(msg.payload, session)
-  return session
+  const terminationRequest = existingSession?.terminationRequest || null
+  const endReason =
+    msg.payload.reason ||
+    terminationRequest?.reason ||
+    'automatic'
+  const endedByUserId = terminationRequest?.requestedByUserId || null
+  const endedByName = terminationRequest?.requestedByName || null
+  const endedByRole = terminationRequest?.requestedByRole || null
+  const forced = terminationRequest?.forced === true
 
+  const session = await store.endSession(sessionId, {
+    endReason,
+    endedByUserId,
+    endedByName,
+    endedByRole,
+    forced,
+    terminationRequest: null,
+  })
+
+  if (existingSession?.endLogWrittenAt) {
+    return session
+  }
+
+  await logSessionEnded(msg.payload, session)
+  return store.updateSession(sessionId, {
+    endLogWrittenAt: new Date(),
+  })
 }
 
 function handleSessionsState(msg) {
@@ -137,32 +237,100 @@ async function forceEndSessionByDeviceId(deviceId, reason = 'manual', sessionId 
   return session
 }
 
-async function getSessions(limit = 50, status = null) {
-  return store.listSessions(limit, status)
+async function getSessionsForProfile(profile, limit = 50, status = null) {
+  const sessions = await store.listSessionsByOrganization(
+    profile.currentOrganizationId,
+    limit,
+    status
+  )
+
+  if (profile.role === 'admin' || profile.role === 'technician') {
+    return sessions
+  }
+
+  return sessions.filter((session) => session.userId === profile.userId)
 }
 
-async function getSessionById(sessionId) {
-  return store.getSession(sessionId)
+async function getSessionByIdForProfile(profile, sessionId) {
+  const session = await store.getSession(sessionId)
+  if (!session) return null
+
+  if (session.organizationId !== profile.currentOrganizationId) {
+    return null
+  }
+
+  if (profile.role === 'admin' || profile.role === 'technician') {
+    return session
+  }
+
+  return session.userId === profile.userId ? session : null
 }
 
 async function createPendingSession(data = {}) {
   if (!data.boxId) throw new Error('boxId is required')
   if (!data.uid) throw new Error('uid is required')
-  
-
-
   if (!Array.isArray(data.deviceIds) || data.deviceIds.length === 0) {
     throw new Error('deviceIds is required')
   }
 
-  const user = await findActiveUserByUid(data.uid)
-  if (!user) {
-    throw new Error('Active user not found for uid')
+  const box = await getBoxById(data.boxId)
+  if (!box) {
+    throw new Error('BOX_NOT_FOUND')
   }
 
+  const organizationId = box.organizationId
+  if (!organizationId) {
+    throw new Error('BOX_ORGANIZATION_NOT_SET')
+  }
+
+  const boxStatus = normalizeEntityStatus(box)
+  if (boxStatus === 'maintenance') {
+    throw new Error('Box is in maintenance mode')
+  }
+
+  if (boxStatus === 'offline' || boxStatus === 'disabled') {
+    throw new Error('Box is not available')
+  }
+
+  const user = await findActiveUserByUidForOrganization(data.uid, organizationId)
+  if (!user) {
+    throw new Error('Active user not found for uid in organization')
+  }
+
+  const allowedDeviceIds = new Set(user.allowedDeviceIds || [])
+
+  for (const deviceId of data.deviceIds) {
+    const device = await getDeviceById(deviceId)
+
+    if (!device) {
+      throw new Error(`Device not found: ${deviceId}`)
+    }
+
+    if (device.organizationId !== organizationId) {
+      throw new Error(`Device is outside organization: ${deviceId}`)
+    }
+
+    if ((device.boxId || null) !== data.boxId) {
+      throw new Error(`Device does not belong to box: ${deviceId}`)
+    }
+
+    const deviceStatus = normalizeEntityStatus(device)
+    if (deviceStatus === 'maintenance') {
+      throw new Error(`Device is in maintenance mode: ${deviceId}`)
+    }
+
+    if (deviceStatus === 'offline' || deviceStatus === 'disabled') {
+      throw new Error(`Device is not available: ${deviceId}`)
+    }
+
+    if (!allowedDeviceIds.has(deviceId)) {
+      throw new Error(`Device is not allowed for user: ${deviceId}`)
+    }
+  }
 
   const session = {
-    sessionId: uuidv4(),
+    sessionId: randomUUID(),
+    organizationId,
     boxId: data.boxId,
     uid: data.uid,
     userId: user.userId,
@@ -174,9 +342,8 @@ async function createPendingSession(data = {}) {
     status: 'pending',
   }
 
-
   for (const deviceId of session.deviceIds) {
-    if (await store.isDeviceBusy(deviceId)) {
+    if (await store.isDeviceBusy(deviceId, organizationId)) {
       throw new Error(`Device is busy: ${deviceId}`)
     }
   }
@@ -188,15 +355,58 @@ async function startSessionById(sessionId) {
   return store.markSessionStarted(sessionId)
 }
 
-async function endSessionById(sessionId, reason = 'manual') {
+async function endSessionById(sessionId, reason = 'manual', actor = null) {
   const session = await store.getSession(sessionId)
   if (!session) return null
+
+  const forced =
+    Boolean(actor) &&
+    (actor.role === 'admin' || actor.role === 'technician') &&
+    actor.userId !== session.userId
+
+  const terminationRequest = actor
+    ? {
+        reason,
+        requestedAt: new Date(),
+        requestedByUserId: actor.userId || null,
+        requestedByName: actor.name || actor.email || actor.userId || 'Operations',
+        requestedByRole: actor.role || null,
+        forced,
+      }
+    : {
+        reason,
+        requestedAt: new Date(),
+        requestedByUserId: null,
+        requestedByName: null,
+        requestedByRole: null,
+        forced: false,
+      }
+
+  const endedSession = await store.endSession(sessionId, {
+    endReason: reason,
+    endedByUserId: terminationRequest.requestedByUserId,
+    endedByName: terminationRequest.requestedByName,
+    endedByRole: terminationRequest.requestedByRole,
+    forced: terminationRequest.forced,
+    terminationRequest,
+  })
 
   if (session.boxId) {
     publishEndSession(session.boxId, { sessionId, reason })
   }
 
-  return store.endSession(sessionId)
+  await logSessionEnded(
+    {
+      boxId: session.boxId,
+      sessionId,
+      reason,
+    },
+    endedSession
+  )
+
+  return store.updateSession(sessionId, {
+    endLogWrittenAt: new Date(),
+  })
 }
 
 module.exports = {
@@ -205,8 +415,8 @@ module.exports = {
   handleSessionEnded,
   handleSessionsState,
   forceEndSession,
-  getSessions,
-  getSessionById,
+  getSessionsForProfile,
+  getSessionByIdForProfile,
   startSessionById,
   endSessionById,
   forceEndSessionByDeviceId,

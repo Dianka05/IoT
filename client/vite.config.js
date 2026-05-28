@@ -9,8 +9,12 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/auth': {
-        target: 'http://localhost:3001',
+      // '/api': {
+      //   target: 'http://localhost:3001',
+      //   changeOrigin: true,
+      // },
+      '/api': {
+        target: 'https://hopeful-integrity-production-6100.up.railway.app',
         changeOrigin: true,
       },
     },

@@ -1,4 +1,5 @@
 const express = require('express')
+const { Errors } = require('ds-express-errors')
 const { requireAuth } = require('./auth.middleware')
 const {
   COOKIE_NAME,
@@ -7,10 +8,34 @@ const {
   loginUser,
   createSessionCookie,
   getMeFromAuthUid,
+  changePasswordForAuthUser,
 } = require('./auth.service')
 const { sendSuccessResponse } = require('../../responses/default.response')
 
 const router = express.Router()
+
+function getCookieOptions(req) {
+  const origin = String(req?.headers?.origin || '')
+  const isLocalhost =
+    origin.startsWith('http://localhost') ||
+    origin.startsWith('http://127.0.0.1') ||
+    origin.startsWith('https://localhost') ||
+    origin.startsWith('https://127.0.0.1')
+  const forceSecureCookies = process.env.FORCE_SECURE_COOKIES === 'true'
+  const crossSiteHttps = origin.startsWith('https://') && !isLocalhost
+  const useSecureCookie =
+    forceSecureCookies ||
+    crossSiteHttps ||
+    process.env.NODE_ENV === 'production'
+
+  return {
+    httpOnly: true,
+    secure: useSecureCookie,
+    sameSite: useSecureCookie ? 'none' : 'lax',
+    maxAge: COOKIE_MAX_AGE_MS,
+    path: '/',
+  }
+}
 
 /**
  * @swagger
@@ -62,17 +87,19 @@ router.post('/auth/register', async (req, res, next) => {
 }
 
   try {
-    const { email, password, name } = req.body || {}
+    const { email, password, name, customerIdentifierNumber } = req.body || {}
 
-    const result = await registerUser({ email, password, name })
+
+    if (!customerIdentifierNumber || typeof customerIdentifierNumber !== 'string') {
+      return res.status(400).json({
+      success: false,
+      message: '`customerIdentifierNumber` is required',
+    })
+    }
+    const result = await registerUser({ email, password, name, customerIdentifierNumber })
     const sessionCookie = await createSessionCookie(result.idToken)
 
-    res.cookie(COOKIE_NAME, sessionCookie, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: COOKIE_MAX_AGE_MS,
-    })
+    res.cookie(COOKIE_NAME, sessionCookie, getCookieOptions(req))
 
     sendSuccessResponse(res, {
         item: {
@@ -127,12 +154,7 @@ router.post('/auth/login', async (req, res, next) => {
     const result = await loginUser({ email, password })
     const sessionCookie = await createSessionCookie(result.idToken)
 
-    res.cookie(COOKIE_NAME, sessionCookie, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: COOKIE_MAX_AGE_MS,
-    })
+    res.cookie(COOKIE_NAME, sessionCookie, getCookieOptions(req))
 
     sendSuccessResponse(res, {
       item: {
@@ -160,7 +182,7 @@ router.post('/auth/login', async (req, res, next) => {
  *               $ref: '#/components/schemas/SuccessResponse'
  */
 router.post('/auth/logout', async (req, res) => {
-  res.clearCookie(COOKIE_NAME)
+  res.clearCookie(COOKIE_NAME, getCookieOptions(req))
   sendSuccessResponse(res, {
     message: 'Logged out successfully',
   })
@@ -198,6 +220,29 @@ router.get('/auth/me', requireAuth, async (req, res, next) => {
           email: req.auth.email || null,
           emailVerified: req.auth.email_verified || false,
         },
+        profile,
+      },
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/auth/change-password', requireAuth, async (req, res, next) => {
+  try {
+    const { password } = req.body || {}
+
+    if (!password || typeof password !== 'string' || password.trim().length < 6) {
+      return next(Errors.BadRequest('`password` must be a string with at least 6 characters'))
+    }
+
+    const profile = await changePasswordForAuthUser(
+      req.auth.uid,
+      password.trim()
+    )
+
+    sendSuccessResponse(res, {
+      item: {
         profile,
       },
     })

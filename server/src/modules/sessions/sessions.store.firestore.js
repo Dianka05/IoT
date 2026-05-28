@@ -50,6 +50,21 @@ async function listSessions(limit = 50, status = null) {
   return snapshot.docs.map(mapDoc)
 }
 
+async function listSessionsByOrganization(organizationId, limit = 50, status = null) {
+  let query = db.collection('sessions').where('organizationId', '==', organizationId)
+
+  if (status) {
+    query = query.where('status', '==', status)
+  }
+
+  const snapshot = await query
+    .orderBy('createdAt', 'desc')
+    .limit(limit)
+    .get()
+
+  return snapshot.docs.map(mapDoc)
+}
+
 async function markSessionStarted(sessionId) {
   const current = await getSession(sessionId)
   if (!current) return null
@@ -58,6 +73,21 @@ async function markSessionStarted(sessionId) {
     {
       status: 'active',
       startedAt: current.startedAt || FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  )
+
+  return getSession(sessionId)
+}
+
+async function updateSession(sessionId, patch = {}) {
+  const current = await getSession(sessionId)
+  if (!current) return null
+
+  await db.collection('sessions').doc(sessionId).set(
+    {
+      ...patch,
       updatedAt: FieldValue.serverTimestamp(),
     },
     { merge: true },
@@ -81,13 +111,13 @@ async function findPendingSessionForAuth(uid, boxId) {
   return mapDoc(snapshot.docs[0])
 }
 
-
-async function endSession(sessionId) {
+async function endSession(sessionId, patch = {}) {
   const current = await getSession(sessionId)
   if (!current) return null
 
   await db.collection('sessions').doc(sessionId).set(
     {
+      ...patch,
       status: 'ended',
       endedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -98,12 +128,17 @@ async function endSession(sessionId) {
   return getSession(sessionId)
 }
 
-async function isDeviceBusy(deviceId) {
-  const snapshot = await db
+async function isDeviceBusy(deviceId, organizationId = null) {
+  let query = db
     .collection('sessions')
     .where('deviceIds', 'array-contains', deviceId)
     .limit(20)
-    .get()
+
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId)
+  }
+
+  const snapshot = await query.get()
 
   return snapshot.docs.some((doc) => {
     const data = doc.data()
@@ -111,12 +146,17 @@ async function isDeviceBusy(deviceId) {
   })
 }
 
-async function findActiveSessionByDeviceId(deviceId) {
-  const snapshot = await db
+async function findActiveSessionByDeviceId(deviceId, organizationId = null) {
+  let query = db
     .collection('sessions')
     .where('deviceIds', 'array-contains', deviceId)
     .limit(20)
-    .get()
+
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId)
+  }
+
+  const snapshot = await query.get()
 
   const match = snapshot.docs.find((doc) => {
     const data = doc.data()
@@ -132,7 +172,9 @@ module.exports = {
   createSession,
   getSession,
   listSessions,
+  listSessionsByOrganization,
   markSessionStarted,
+  updateSession,
   endSession,
   isDeviceBusy,
   findPendingSessionForAuth,

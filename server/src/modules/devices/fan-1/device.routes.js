@@ -1,57 +1,26 @@
-const {
-  Errors,
-} = require('ds-express-errors')
+const { Errors } = require('ds-express-errors')
 const express = require('express')
-const { publishDeviceAccessSet, publishDeviceEndSession, addDevice,
-  getDevices,
+const {
+  publishDeviceAccessSet,
+  publishDeviceEndSession,
+  addDevice,
+  getDevicesForOrganization,
   getDevice,
   patchDevice,
-  removeDevice, } = require('./device.service')
+  removeDevice,
+} = require('./device.service')
 const { forceEndSessionByDeviceId } = require('../../sessions/sessions.service')
 const client = require('../../../mqtt/client')
 const { sendSuccessResponse } = require('../../../responses/default.response')
+const { requireAuth } = require('../../auth/auth.middleware')
+const {
+  requireUserProfile,
+  requireOperationsRole,
+  requireOrganizationContext,
+} = require('../../auth/role.middleware')
+
 const router = express.Router()
 
-/**
- * @swagger
- * /devices/{deviceId}/access-set:
- *   post:
- *     summary: Send access_set command to device
- *     tags:
- *       - Devices
- *     parameters:
- *       - in: path
- *         name: deviceId
- *         required: true
- *         schema:
- *           type: string
- *         description: Device identifier
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/DeviceAccessSetRequest'
- *     responses:
- *       200:
- *         description: access_set command sent successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       503:
- *         description: MQTT broker is not connected
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
 router.post('/devices/:deviceId/access-set', (req, res, next) => {
   try {
     const { deviceId } = req.params
@@ -92,46 +61,6 @@ router.post('/devices/:deviceId/access-set', (req, res, next) => {
   }
 })
 
-/**
- * @swagger
- * /devices/{deviceId}/end-session:
- *   post:
- *     summary: Send end_session command to device
- *     tags:
- *       - Devices
- *     parameters:
- *       - in: path
- *         name: deviceId
- *         required: true
- *         schema:
- *           type: string
- *         description: Device identifier
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/DeviceEndSessionRequest'
- *     responses:
- *       200:
- *         description: end_session command sent successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       503:
- *         description: MQTT broker is not connected
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
 router.post('/devices/:deviceId/end-session', (req, res, next) => {
   try {
     const { deviceId } = req.params
@@ -170,70 +99,9 @@ router.post('/devices/:deviceId/end-session', (req, res, next) => {
   }
 })
 
-// ----------------------------
-
-/**
- * @swagger
- * /devices:
- *   post:
- *     summary: Create device
- *     tags:
- *       - Devices
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - deviceId
- *               - name
- *               - type
- *             properties:
- *               deviceId:
- *                 type: string
- *                 example: fan-1
- *               name:
- *                 type: string
- *                 example: Fan 1
- *               type:
- *                 type: string
- *                 example: fan
- *               boxId:
- *                 type: string
- *                 nullable: true
- *                 example: main-1
- *               active:
- *                 type: boolean
- *                 example: true
- *               status:
- *                 type: string
- *                 example: idle
- *               metadata:
- *                 type: object
- *     responses:
- *       200:
- *         description: Device created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       409:
- *         description: Device already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.post('/devices', async (req, res, next) => {
+router.post('/devices', requireAuth, requireUserProfile, requireOperationsRole, async (req, res, next) => {
   try {
-    const { deviceId, name, type, boxId, active, status, metadata } = req.body || {}
+    const { deviceId, name, type, boxId, active, status, metadata, organizationId } = req.body || {}
 
     if (!deviceId || typeof deviceId !== 'string') {
       return next(Errors.BadRequest('`deviceId` must be a non-empty string'))
@@ -247,7 +115,7 @@ router.post('/devices', async (req, res, next) => {
       return next(Errors.BadRequest('`type` must be a non-empty string'))
     }
 
-    const item = await addDevice({
+    const item = await addDevice(req.userProfile, {
       deviceId,
       name,
       type,
@@ -255,6 +123,7 @@ router.post('/devices', async (req, res, next) => {
       active,
       status,
       metadata,
+      organizationId,
     })
 
     sendSuccessResponse(res, item)
@@ -263,38 +132,35 @@ router.post('/devices', async (req, res, next) => {
       return next(Errors.Conflict('Device already exists'))
     }
 
+    if (err.message === 'CURRENT_ORGANIZATION_NOT_SET') {
+      return next(Errors.Forbidden('Current organization is not set'))
+    }
+
+    if (err.message === 'ORGANIZATION_ACCESS_DENIED') {
+      return next(Errors.Forbidden('Cannot create device in this organization'))
+    }
+
+    if (err.message === 'BOX_NOT_FOUND') {
+      return next(Errors.BadRequest('Selected box was not found'))
+    }
+
+    if (err.message === 'BOX_OUTSIDE_ORGANIZATION') {
+      return next(Errors.BadRequest('Box must belong to the same organization'))
+    }
+
     next(err)
   }
 })
 
-/**
- * @swagger
- * /devices:
- *   get:
- *     summary: Get devices
- *     tags:
- *       - Devices
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           example: 50
- *         description: Number of devices to return
- *     responses:
- *       200:
- *         description: Devices fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/DeviceList'
- */
-router.get('/devices', async (req, res, next) => {
+router.get('/devices', requireAuth, requireUserProfile, requireOrganizationContext, async (req, res, next) => {
   try {
     const parsedLimit = Number(req.query.limit || 50)
     const limit = Number.isNaN(parsedLimit) ? 50 : parsedLimit
 
-    const items = await getDevices(limit)
+    const items = await getDevicesForOrganization(
+      req.userProfile.currentOrganizationId,
+      limit
+    )
 
     sendSuccessResponse(res, {
       items,
@@ -305,40 +171,16 @@ router.get('/devices', async (req, res, next) => {
   }
 })
 
-/**
- * @swagger
- * /devices/{deviceId}:
- *   get:
- *     summary: Get device by id
- *     tags:
- *       - Devices
- *     parameters:
- *       - in: path
- *         name: deviceId
- *         required: true
- *         schema:
- *           type: string
- *         description: Device identifier
- *     responses:
- *       200:
- *         description: Device fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Device'
- *       404:
- *         description: Device not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.get('/devices/:deviceId', async (req, res, next) => {
+router.get('/devices/:deviceId', requireAuth, requireUserProfile, requireOrganizationContext, async (req, res, next) => {
   try {
     const item = await getDevice(req.params.deviceId)
 
     if (!item) {
       return next(Errors.NotFound('Device not found'))
+    }
+
+    if (item.organizationId !== req.userProfile.currentOrganizationId) {
+      return next(Errors.Forbidden('Cannot access device from another organization'))
     }
 
     sendSuccessResponse(res, item)
@@ -347,61 +189,7 @@ router.get('/devices/:deviceId', async (req, res, next) => {
   }
 })
 
-/**
- * @swagger
- * /devices/{deviceId}:
- *   patch:
- *     summary: Update device
- *     tags:
- *       - Devices
- *     parameters:
- *       - in: path
- *         name: deviceId
- *         required: true
- *         schema:
- *           type: string
- *         description: Device identifier
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               type:
- *                 type: string
- *               boxId:
- *                 type: string
- *                 nullable: true
- *               active:
- *                 type: boolean
- *               status:
- *                 type: string
- *               metadata:
- *                 type: object
- *     responses:
- *       200:
- *         description: Device updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       404:
- *         description: Device not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.patch('/devices/:deviceId', async (req, res, next) => {
+router.patch('/devices/:deviceId', requireAuth, requireUserProfile, requireOperationsRole, async (req, res, next) => {
   try {
     const { deviceId } = req.params
     const { name, type, boxId, active, status, metadata } = req.body || {}
@@ -450,7 +238,7 @@ router.patch('/devices/:deviceId', async (req, res, next) => {
       patch.metadata = metadata
     }
 
-    const item = await patchDevice(deviceId, patch)
+    const item = await patchDevice(req.userProfile, deviceId, patch)
 
     if (!item) {
       return next(Errors.NotFound('Device not found'))
@@ -458,43 +246,27 @@ router.patch('/devices/:deviceId', async (req, res, next) => {
 
     sendSuccessResponse(res, item)
   } catch (err) {
+    if (err.message === 'ORGANIZATION_ACCESS_DENIED') {
+      return next(Errors.Forbidden('Cannot modify device from another organization'))
+    }
+
+    if (err.message === 'BOX_NOT_FOUND') {
+      return next(Errors.BadRequest('Selected box was not found'))
+    }
+
+    if (err.message === 'BOX_OUTSIDE_ORGANIZATION') {
+      return next(Errors.BadRequest('Box must belong to the same organization'))
+    }
+
     next(err)
   }
 })
 
-/**
- * @swagger
- * /devices/{deviceId}:
- *   delete:
- *     summary: Delete device
- *     tags:
- *       - Devices
- *     parameters:
- *       - in: path
- *         name: deviceId
- *         required: true
- *         schema:
- *           type: string
- *         description: Device identifier
- *     responses:
- *       200:
- *         description: Device deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       404:
- *         description: Device not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.delete('/devices/:deviceId', async (req, res, next) => {
+router.delete('/devices/:deviceId', requireAuth, requireUserProfile, requireOperationsRole, async (req, res, next) => {
   try {
     const { deviceId } = req.params
 
-    const deleted = await removeDevice(deviceId)
+    const deleted = await removeDevice(req.userProfile, deviceId)
 
     if (!deleted) {
       return next(Errors.NotFound('Device not found'))
@@ -505,6 +277,10 @@ router.delete('/devices/:deviceId', async (req, res, next) => {
       id: deviceId,
     })
   } catch (err) {
+    if (err.message === 'ORGANIZATION_ACCESS_DENIED') {
+      return next(Errors.Forbidden('Cannot delete device from another organization'))
+    }
+
     next(err)
   }
 })

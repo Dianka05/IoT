@@ -16,6 +16,8 @@ const logsRoutes = require('./src/modules/logs/logs.routes')
 const authRoutes = require('./src/modules/auth/auth.routes')
 const activitiesRoutes = require('./src/modules/activities/activities.routes')
 const organizationsRoutes = require('./src/modules/organizations/organizations.routes')
+const configurationRoutes = require('./src/modules/configuration/configuration.routes')
+const customerIdentifierNumberRoutes = require('./src/modules/customerIdentifierNumbers/customerIdentifierNumbers.routes')
 
 const cookieParser = require('cookie-parser')
 
@@ -23,15 +25,19 @@ const client = require('./src/mqtt/client')
 const { initMqtt } = require('./src/mqtt/init')
 
 
-try {
-  initMqtt()
-} catch (error) {
-  logDebug('Error occurred while initializing MQTT: ' + error.message)
-    console.log("ss")
-}
-
 const app = express()
-const allowedOrigins = ['http://localhost:5173']
+const configuredOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  ...(process.env.CLIENT_URLS
+    ? process.env.CLIENT_URLS.split(',').map((value) => value.trim())
+    : []),
+].filter(Boolean)
+const allowedOrigins = [...new Set([
+  'http://localhost:5173',
+  'https://iot-pink.vercel.app',
+  ...configuredOrigins,
+])]
 const corsOptions = {
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -48,10 +54,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 app.options(/.*/, cors(corsOptions))
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
-}))
 app.use(express.json())
 
 setConfig({
@@ -92,26 +94,29 @@ const options = {
     './src/modules/**/*.js'
   ]
 };
+app.use(cookieParser())
 
 const swaggerSpec = swaggerJsdoc(options);
 console.log('PATHS:', Object.keys(swaggerSpec.paths || {}))
-app.use('/api', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.use(cookieParser())
+app.use('/api', fanRoutes)
+app.use('/api', mainBoxRoutes)
 
-app.use(fanRoutes)
-app.use(mainBoxRoutes)
+app.use('/api', sessionRoutes)
+app.use('/api', userRoutes)
 
-app.use(sessionRoutes)
-app.use(userRoutes)
+app.use('/api', logsRoutes)
 
-app.use(logsRoutes)
+app.use('/api', activitiesRoutes)
 
-app.use(activitiesRoutes)
+app.use('/api', organizationsRoutes)
 
-app.use(organizationsRoutes)
+app.use('/api', configurationRoutes)
 
-app.use(authRoutes)
+app.use('/api', authRoutes)
+
+app.use(customerIdentifierNumberRoutes)
 
 /**
  * @swagger
@@ -136,17 +141,41 @@ app.use(authRoutes)
  *                   type: boolean
  *                   example: true
  */
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    service: 'iot-backend',
+    mqttConnected: client.connected,
+    mqttDisabled: client.disabled === true,
+  })
+})
+
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end()
+})
+
 app.get('/health', (req, res, next) => {
   res.json({
     success: client.connected,
     mqttConnected: client.connected,
+    mqttDisabled: client.disabled === true,
   })
 })
 
-app.listen(process.env.PORT || 3000, () => {
-  logDebug(
-    'HTTP server running on http://localhost:' + (process.env.PORT || 3000),
-  )
-})
-
 app.use(errorHandler)
+
+try {
+  initMqtt()
+} catch (error) {
+  logDebug('Error occurred while initializing MQTT: ' + error.message)
+}
+
+if (require.main === module) {
+  app.listen(process.env.PORT || 3001, () => {
+    logDebug(
+      'HTTP server running on http://localhost:' + (process.env.PORT || 3001),
+    )
+  })
+}
+
+module.exports = app

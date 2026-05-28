@@ -1,19 +1,24 @@
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { API_URL, request, unwrapData } from './request'
 
-const parseResponse = async (response) => {
-  const contentType = response.headers.get('content-type') || '';
-  const isJson = contentType.includes('application/json');
-  const payload = isJson
-    ? await response.json()
-    : {
-        success: false,
-        error: {
-          message: `Request failed with status ${response.status}`,
-        },
-      };
+export const register = async ( email, password, name = '', customerIdentifierNumber = '',
+) => {
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password, name, customerIdentifierNumber,
+    }),
+    credentials: 'include',
+  });
+
+  const payload = await response.json().catch(() => ({
+    success: false,
+    error: { message: `Request failed with status ${response.status}` },
+  }))
 
   if (response.ok) {
-    return payload;
+    return payload
   }
 
   return {
@@ -23,21 +28,8 @@ const parseResponse = async (response) => {
       ...(payload?.error || {}),
       message: payload?.error?.message || `Request failed with status ${response.status}`,
     },
-  };
+  }
 };
-
-export const register = async (email, password, name = '') => {
-  const response = await fetch(`${API_URL}/auth/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password, name }),
-    credentials: 'include',
-  });
-  return parseResponse(response);
-};
-
 export const login = async (email, password) => {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
@@ -47,7 +39,23 @@ export const login = async (email, password) => {
     body: JSON.stringify({ email, password }),
     credentials: 'include',
   });
-  return parseResponse(response);
+  const payload = await response.json().catch(() => ({
+    success: false,
+    error: { message: `Request failed with status ${response.status}` },
+  }))
+
+  if (response.ok) {
+    return payload
+  }
+
+  return {
+    success: false,
+    ...payload,
+    error: {
+      ...(payload?.error || {}),
+      message: payload?.error?.message || `Request failed with status ${response.status}`,
+    },
+  }
 };
 
 export const logout = async () => {
@@ -58,16 +66,47 @@ export const logout = async () => {
     },
     credentials: 'include',
   });
-  return parseResponse(response);
+  const payload = await response.json().catch(() => ({
+    success: false,
+    error: { message: `Request failed with status ${response.status}` },
+  }))
+
+  if (response.ok) {
+    return payload
+  }
+
+  return {
+    success: false,
+    ...payload,
+    error: {
+      ...(payload?.error || {}),
+      message: payload?.error?.message || `Request failed with status ${response.status}`,
+    },
+  }
 };
 
+export const changePassword = async (password) => {
+  const payload = await request('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  })
+  const data = unwrapData(payload)
+
+  return data?.item || null
+}
+
 export const getMe = async () => {
-  const response = await fetch(`${API_URL}/auth/me`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  });
-  return parseResponse(response);
-};
+  return request('/auth/me')
+}
+
+export const getCurrentUser = async () => {
+  const payload = await request('/auth/me')
+  const data = unwrapData(payload)
+
+  return data?.item || null
+}
+
+export const getCurrentProfile = async () => {
+  const current = await getCurrentUser()
+  return current?.profile || null
+}

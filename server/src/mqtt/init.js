@@ -8,6 +8,12 @@ function initMqtt() {
     return
   }
 
+  if (client.__iotInitialized === true) {
+    return
+  }
+
+  client.__iotInitialized = true
+
   client.on('connect', () => {
     client.subscribe(
       ['device/+/state/+', 'box/+/state/+', 'device/+/event/+', 'box/+/event/+'],

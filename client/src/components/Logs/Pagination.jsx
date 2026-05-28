@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Pagination({ totalItems, perPage = 6, page, setPage }) {
-  const totalPages = Math.ceil(totalItems / perPage);
+  const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
 
   const goPrev = () => page > 1 && setPage(page - 1);
   const goNext = () => page < totalPages && setPage(page + 1);
@@ -10,7 +10,9 @@ export default function Pagination({ totalItems, perPage = 6, page, setPage }) {
     const pages = [];
 
     if (totalPages <= 6) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      for (let i = 1; i <= totalPages; i += 1) {
+        pages.push(i);
+      }
     } else {
       pages.push(1);
 
@@ -19,7 +21,9 @@ export default function Pagination({ totalItems, perPage = 6, page, setPage }) {
       const start = Math.max(2, page - 1);
       const end = Math.min(totalPages - 1, page + 1);
 
-      for (let i = start; i <= end; i++) pages.push(i);
+      for (let i = start; i <= end; i += 1) {
+        pages.push(i);
+      }
 
       if (page < totalPages - 2) pages.push("...");
 
@@ -30,45 +34,45 @@ export default function Pagination({ totalItems, perPage = 6, page, setPage }) {
   };
 
   const pages = getPages();
+  const rangeStart = totalItems === 0 ? 0 : (page - 1) * perPage + 1;
+  const rangeEnd = Math.min(page * perPage, totalItems);
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 px-2">
-
-      <p className="text-sm text-slate-600 mb-4 sm:mb-0">
-        Showing {(page - 1) * perPage + 1} –{" "}
-        {Math.min(page * perPage, totalItems)} of {totalItems} entries
+    <div className="mt-6 flex flex-col px-2 sm:flex-row sm:items-center sm:justify-between">
+      <p className="mb-4 text-sm text-slate-600 sm:mb-0">
+        Showing {rangeStart} - {rangeEnd} of {totalItems} entries
       </p>
 
       <div className="flex items-center gap-2">
         <button
           onClick={goPrev}
           disabled={page === 1}
-          className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 transition disabled:opacity-40"
+          className="rounded-lg border border-slate-200 bg-white p-2 transition hover:bg-slate-100 disabled:opacity-40"
         >
           <ChevronLeft size={18} />
         </button>
 
-        {pages.map((p, index) => (
+        {pages.map((item, index) => (
           <button
-            key={index}
-            onClick={() => typeof p === "number" && setPage(p)}
-            disabled={p === "..."}
+            key={`${item}-${index}`}
+            onClick={() => typeof item === "number" && setPage(item)}
+            disabled={item === "..."}
             className={`
-              px-3 py-1 rounded-lg text-sm font-medium transition
-              ${p === page
-                ? "bg-blue-600 text-white"
-                : "bg-white border border-slate-200 hover:bg-slate-100"}
-              ${p === "..." ? "cursor-default" : ""}
+              rounded-lg px-3 py-1 text-sm font-medium transition
+              ${item === page
+                ? "bg-orange-500 text-white"
+                : "border border-slate-200 bg-white hover:bg-slate-100"}
+              ${item === "..." ? "cursor-default" : ""}
             `}
           >
-            {p}
+            {item}
           </button>
         ))}
 
         <button
           onClick={goNext}
           disabled={page === totalPages}
-          className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 transition disabled:opacity-40"
+          className="rounded-lg border border-slate-200 bg-white p-2 transition hover:bg-slate-100 disabled:opacity-40"
         >
           <ChevronRight size={18} />
         </button>
