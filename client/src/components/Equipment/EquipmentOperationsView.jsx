@@ -115,13 +115,17 @@ function DeviceRow({ device, onEdit }) {
   const occupancyLabel = occupancyUserName
     ? occupancyStatus === "active"
       ? `In use by ${occupancyUserName}`
-      : occupancyStatus === "pending"
-        ? `Reserved by ${occupancyUserName}`
+      : occupancyStatus === "ready_for_auth"
+        ? `Ready for ${occupancyUserName}`
+        : occupancyStatus === "missed"
+          ? `Late claim for ${occupancyUserName}`
         : ""
     : occupancyStatus === "active"
       ? "Currently in use"
-      : occupancyStatus === "pending"
-        ? "Currently reserved"
+      : occupancyStatus === "ready_for_auth"
+        ? "Waiting for RFID confirmation"
+        : occupancyStatus === "missed"
+          ? "Late claim window"
         : "";
 
   return (

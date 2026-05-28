@@ -7,10 +7,12 @@ import {
   CreditCard,
   FileText,
   LayoutDashboard,
+  LogOut,
   Monitor,
   Settings,
   Users,
 } from 'lucide-react';
+import { logout } from '../api/auth';
 import { canManageUsers, canUseOperationsDashboard } from '../auth/roles';
 import { useAuth } from '../auth/AuthContext';
 import { formatRoleLabel } from '../utils/currentUser';
@@ -76,13 +78,21 @@ function SidebarContent({
   userName,
   loading,
   organizations,
+  memberships,
   currentOrganizationId,
   onSwitchOrganization,
   switchingOrganization,
+  onLogout,
+  loggingOut,
 }) {
   const roleLabel = getRoleLabel(role, loading);
   const navItems = getNavItems(role);
   const canCreateOrganization = role === 'admin';
+  const activeOrganizations = organizations.filter((organization) => {
+    const organizationId = organization.organizationId || organization.id;
+    const membership = memberships.find((item) => item.organizationId === organizationId);
+    return membership?.active !== false;
+  });
 
   return (
     <div className="flex flex-col h-full">
@@ -107,7 +117,7 @@ function SidebarContent({
         </div>
       </div>
 
-      {organizations.length > 0 && (
+      {activeOrganizations.length > 0 && (
         <div className="px-4 pb-4">
           <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-4">
             <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
@@ -121,7 +131,7 @@ function SidebarContent({
               disabled={switchingOrganization}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {organizations.map((organization) => {
+              {activeOrganizations.map((organization) => {
                 const organizationId = organization.organizationId || organization.id;
 
                 return (
@@ -151,18 +161,33 @@ function SidebarContent({
       </nav>
 
       <div className="p-4 mt-auto">
-        <div className="bg-slate-50 p-3 rounded-[24px] flex items-center gap-3 border border-slate-100">
-          <div className="shrink-0 w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm bg-orange-100 flex items-center justify-center text-sm font-black text-orange-600">
-            {String(userName || 'U').slice(0, 1).toUpperCase()}
+        <div className="space-y-3">
+          <div className="bg-slate-50 p-3 rounded-[24px] flex items-center gap-3 border border-slate-100">
+            <div className="shrink-0 w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm bg-orange-100 flex items-center justify-center text-sm font-black text-orange-600">
+              {String(userName || 'U').slice(0, 1).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-[13px] font-black text-slate-800 truncate">
+                {userName}
+              </h4>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+                {roleLabel}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h4 className="text-[13px] font-black text-slate-800 truncate">
-              {userName}
-            </h4>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-              {roleLabel}
-            </p>
-          </div>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            disabled={loggingOut}
+            className="flex w-full items-center justify-between rounded-[20px] border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span className="flex items-center gap-3">
+              <LogOut size={18} />
+              Logout
+            </span>
+            <ChevronRight size={16} className="text-slate-400" />
+          </button>
         </div>
       </div>
     </div>
@@ -173,6 +198,7 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
   const navigate = useNavigate();
   const toast = useToast();
   const [switchingOrganization, setSwitchingOrganization] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const {
     profile,
     role: authRole,
@@ -180,7 +206,9 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
     organizations,
     currentOrganizationId,
     setCurrentOrganization,
+    clearAuth,
   } = useAuth();
+  const memberships = Array.isArray(profile?.memberships) ? profile.memberships : [];
   const role = roleProp || profile?.role || authRole || null;
   const userName = userNameProp || profile?.name || profile?.email || 'Loading';
 
@@ -204,6 +232,28 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
     }
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+
+    try {
+      const result = await logout();
+
+      if (result?.success === false) {
+        throw new Error(result?.error?.message || 'Could not log out.');
+      }
+
+      clearAuth();
+      setIsOpen(false);
+      toast.success("Logged out", "You have been signed out successfully.");
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error('Failed to log out:', err);
+      toast.error("Logout failed", err.message || "Could not log out right now.");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <>
       <aside className="hidden md:flex w-72 bg-white border-r border-slate-100 flex-col min-h-screen">
@@ -212,9 +262,12 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
           userName={userName}
           loading={loading}
           organizations={organizations}
+          memberships={memberships}
           currentOrganizationId={currentOrganizationId}
           onSwitchOrganization={handleSwitchOrganization}
           switchingOrganization={switchingOrganization}
+          onLogout={handleLogout}
+          loggingOut={loggingOut}
         />
       </aside>
 
@@ -239,9 +292,12 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
           userName={userName}
           loading={loading}
           organizations={organizations}
+          memberships={memberships}
           currentOrganizationId={currentOrganizationId}
           onSwitchOrganization={handleSwitchOrganization}
           switchingOrganization={switchingOrganization}
+          onLogout={handleLogout}
+          loggingOut={loggingOut}
         />
       </aside>
     </>

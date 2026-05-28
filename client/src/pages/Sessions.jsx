@@ -46,14 +46,65 @@ function formatRole(value) {
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
+function formatTimeOnly(timestamp) {
+  const millis = toMillis(timestamp);
+  if (!millis) return "Unknown";
+
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(millis));
+}
+
+function deriveSessionStatus(session, nowMs) {
+  const currentStatus = String(session?.status || "").toLowerCase();
+  if (
+    currentStatus === "active" ||
+    currentStatus === "ended" ||
+    currentStatus === "expired" ||
+    currentStatus === "cancelled"
+  ) {
+    return currentStatus;
+  }
+
+  const scheduledStartAtMs = toMillis(session?.scheduledStartAt || session?.createdAt);
+  const scheduledEndAtMs = toMillis(session?.scheduledEndAt);
+  const authWindowEndsAtMs = toMillis(session?.authWindowEndsAt) ?? (
+    scheduledStartAtMs !== null ? scheduledStartAtMs + 60 * 1000 : null
+  );
+
+  if (scheduledStartAtMs === null || scheduledEndAtMs === null) {
+    return currentStatus || "scheduled";
+  }
+
+  if (nowMs > scheduledEndAtMs) {
+    return "expired";
+  }
+
+  if (nowMs < scheduledStartAtMs) {
+    return "scheduled";
+  }
+
+  if (authWindowEndsAtMs !== null && nowMs <= authWindowEndsAtMs) {
+    return "ready_for_auth";
+  }
+
+  return "missed";
+}
+
 function mapSessionRow(session, nowMs, deviceNameMap) {
-  const status = String(session.status || "").toLowerCase();
+  const status = deriveSessionStatus(session, nowMs);
   const durationSec = Number(session.sessionDurationSec || 0);
+  const scheduledStartAtMs = toMillis(session.scheduledStartAt || session.createdAt);
+  const scheduledEndAtMs = toMillis(session.scheduledEndAt);
   const startedAtMs = toMillis(session.startedAt || session.createdAt);
-  const elapsedSec = startedAtMs ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000)) : 0;
+  const elapsedAnchorMs = startedAtMs || scheduledStartAtMs;
+  const elapsedSec = elapsedAnchorMs ? Math.max(0, Math.floor((nowMs - elapsedAnchorMs) / 1000)) : 0;
   const remainingSec = durationSec > 0 ? Math.max(0, durationSec - elapsedSec) : 0;
   const isLive = status === "active";
-  const isPending = status === "pending";
+  const isScheduled = status === "scheduled";
+  const isReadyForAuth = status === "ready_for_auth";
+  const isMissed = status === "missed";
   const durationMinutes = durationSec > 0 ? Math.max(1, Math.round(durationSec / 60)) : 0;
   const percent = durationSec > 0 ? Math.min(100, Math.round((elapsedSec / durationSec) * 100)) : 0;
   const mm = Math.floor(remainingSec / 60);
@@ -62,8 +113,16 @@ function mapSessionRow(session, nowMs, deviceNameMap) {
   let time = "Not started";
   if (isLive) {
     time = `${mm}:${String(ss).padStart(2, "0")}`;
-  } else if (isPending) {
-    time = "Pending start";
+  } else if (isScheduled) {
+    time = `Starts ${formatTimeOnly(session.scheduledStartAt)}`;
+  } else if (isReadyForAuth) {
+    time = `Ready until ${formatTimeOnly(session.authWindowEndsAt)}`;
+  } else if (isMissed) {
+    time = scheduledEndAtMs ? `Late claim until ${formatTimeOnly(session.scheduledEndAt)}` : "Late claim window";
+  } else if (status === "expired") {
+    time = "Reservation expired";
+  } else if (status === "cancelled") {
+    time = "Reservation cancelled";
   } else if (status === "ended") {
     time = session.endedAt ? "Completed" : "Ended";
   }
@@ -79,11 +138,25 @@ function mapSessionRow(session, nowMs, deviceNameMap) {
         : "No devices",
     boxLabel: session.boxId || "No box",
     mode: String(session.mode || "manual").toUpperCase(),
-    started: formatDateTime(session.startedAt || session.createdAt),
-    status: isLive ? "ACTIVE" : isPending ? "PENDING" : "ENDED",
+    started: formatDateTime(session.startedAt || session.scheduledStartAt || session.createdAt),
+    status: isLive
+      ? "ACTIVE"
+      : isScheduled
+        ? "SCHEDULED"
+        : isReadyForAuth
+          ? "READY"
+          : isMissed
+            ? "MISSED"
+            : status === "expired"
+              ? "EXPIRED"
+              : status === "cancelled"
+                ? "CANCELLED"
+                : "ENDED",
     time,
     percent,
     durationMinutes,
+    scheduledStart: formatDateTime(session.scheduledStartAt || session.createdAt),
+    scheduledEnd: formatDateTime(session.scheduledEndAt || session.endedAt || session.updatedAt),
   };
 }
 
@@ -108,6 +181,7 @@ export default function Sessions() {
   const loadSessionsData = useCallback(async ({
     silent = false,
     preservePage = false,
+    includeReference = true,
   } = {}) => {
     if (!currentOrganizationId) {
       setSessions([]);
@@ -123,14 +197,19 @@ export default function Sessions() {
     setError("");
 
     try {
-      const [items, boxesList, devicesList] = await Promise.all([
+      const tasks = [
         getSessions(200),
-        getBoxes(200),
-        getDevices(200),
-      ]);
+        includeReference ? getBoxes(200) : Promise.resolve(null),
+        includeReference ? getDevices(200) : Promise.resolve(null),
+      ];
+      const [items, boxesList, devicesList] = await Promise.all(tasks);
       setSessions(items);
-      setBoxes(boxesList);
-      setDevices(devicesList);
+      if (boxesList) {
+        setBoxes(boxesList);
+      }
+      if (devicesList) {
+        setDevices(devicesList);
+      }
       if (!preservePage) {
         setPage(1);
       }
@@ -156,11 +235,19 @@ export default function Sessions() {
     }
 
     const interval = setInterval(() => {
-      loadSessionsData({ silent: true, preservePage: true });
+      loadSessionsData({ silent: true, preservePage: true, includeReference: false });
     }, 5000);
 
     return () => clearInterval(interval);
   }, [authLoading, currentOrganizationId, loadSessionsData, reservationModalOpen]);
+
+  useEffect(() => {
+    if (!reservationModalOpen || authLoading || !currentOrganizationId) {
+      return;
+    }
+
+    loadSessionsData({ silent: true, preservePage: true, includeReference: true });
+  }, [reservationModalOpen, authLoading, currentOrganizationId, loadSessionsData]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -176,7 +263,7 @@ export default function Sessions() {
 
     try {
       await endSession(id, "manual");
-      await loadSessionsData({ preservePage: true });
+      await loadSessionsData({ preservePage: true, includeReference: false });
       toast.success("Session stopped", "The session was ended successfully.");
     } catch (err) {
       console.error("Failed to end session:", err);
@@ -221,7 +308,7 @@ export default function Sessions() {
           return false;
         }
 
-        return status !== "maintenance" && status !== "offline" && status !== "busy" && status !== "reserved" && status !== "in_use";
+        return status !== "maintenance" && status !== "offline";
       }),
     [devices, allowedDeviceIds, boxStatusMap]
   );
@@ -251,7 +338,7 @@ export default function Sessions() {
     try {
       await createSession(payload);
       setReservationModalOpen(false);
-      await loadSessionsData({ preservePage: true });
+      await loadSessionsData({ preservePage: true, includeReference: true });
       toast.success("Reservation created", "The device reservation is now waiting for RFID authentication at the box.");
     } catch (err) {
       console.error("Failed to create reservation:", err);
@@ -271,7 +358,10 @@ export default function Sessions() {
   const end = start + perPage;
   const pageData = sessionsState.slice(start, end);
   const liveSessions = sessionsState.filter(
-    (session) => session.status === "ACTIVE" || session.status === "PENDING"
+    (session) =>
+      session.status === "ACTIVE" ||
+      session.status === "READY" ||
+      session.status === "MISSED"
   ).length;
   const reservationDisabledReason = useMemo(() => {
     if (!activeCardUid) {
@@ -283,10 +373,10 @@ export default function Sessions() {
     }
 
     if (reservableBoxes.length === 0) {
-      return "No available boxes are ready right now. A box or device may be offline, in maintenance, reserved, or already in use.";
+      return "No boxes are available right now. Your assigned box or devices may be offline or in maintenance.";
     }
 
-    return "Choose a box first, then pick one or more available devices inside it.";
+    return "Choose a box first. For reservations scheduled later, you can also select a device that is currently in use as long as the time window does not overlap.";
   }, [activeCardUid, allowedDeviceIds, reservableBoxes]);
 
   if (authLoading) {

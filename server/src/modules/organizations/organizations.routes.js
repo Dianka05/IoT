@@ -1,7 +1,7 @@
 const express = require('express')
 const { Errors } = require('ds-express-errors')
 const { requireAuth } = require('../auth/auth.middleware')
-const { requireUserProfile } = require('../auth/role.middleware')
+const { requireProfile, requireUserProfile } = require('../auth/role.middleware')
 const {
   createOrganizationForUser,
   getOrganization,
@@ -52,7 +52,7 @@ router.post('/organizations', requireAuth, requireUserProfile, async (req, res, 
   }
 })
 
-router.get('/organizations', requireAuth, requireUserProfile, async (req, res, next) => {
+router.get('/organizations', requireAuth, requireProfile, async (req, res, next) => {
   try {
     const items = await getOrganizationsForUser(req.userProfile)
 
@@ -66,7 +66,7 @@ router.get('/organizations', requireAuth, requireUserProfile, async (req, res, n
   }
 })
 
-router.get('/organizations/:organizationId', requireAuth, requireUserProfile, async (req, res, next) => {
+router.get('/organizations/:organizationId', requireAuth, requireProfile, async (req, res, next) => {
   try {
     const organizationId = req.params.organizationId
 
@@ -89,7 +89,7 @@ router.get('/organizations/:organizationId', requireAuth, requireUserProfile, as
   }
 })
 
-router.patch('/organizations/current', requireAuth, requireUserProfile, async (req, res, next) => {
+router.patch('/organizations/current', requireAuth, requireProfile, async (req, res, next) => {
   try {
     const { organizationId } = req.body || {}
 

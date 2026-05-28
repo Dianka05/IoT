@@ -15,8 +15,8 @@ export default function SessionsStats({
           <p className="mt-1 text-4xl font-black text-slate-800">{liveSessions}</p>
           <p className="mt-1 text-xs font-medium text-green-600">
             {isOperationsRole
-              ? "Active and pending in current workspace"
-              : "Your active and pending reservations"}
+              ? "Active, ready, and late-claim sessions in current workspace"
+              : "Your active and claimable reservations"}
           </p>
         </div>
 

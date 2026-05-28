@@ -22,7 +22,12 @@ async function createBox(box) {
     updatedAt: FieldValue.serverTimestamp(),
   })
 
-  return getBoxById(boxId)
+  return {
+    id: boxId,
+    ...box,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
 }
 
 async function getBoxById(boxId) {
@@ -30,6 +35,18 @@ async function getBoxById(boxId) {
   if (!doc.exists) return null
 
   return mapDoc(doc)
+}
+
+async function getBoxesByIds(boxIds = []) {
+  const normalizedIds = [...new Set(boxIds.filter(Boolean))]
+  if (normalizedIds.length === 0) {
+    return []
+  }
+
+  const refs = normalizedIds.map((boxId) => db.collection('boxes').doc(boxId))
+  const docs = await db.getAll(...refs)
+
+  return docs.filter((doc) => doc.exists).map(mapDoc)
 }
 
 async function listBoxes(limit = 50) {
@@ -53,6 +70,8 @@ async function updateBoxById(boxId, patch) {
 
   if (!existing.exists) return null
 
+  const current = mapDoc(existing)
+
   await docRef.set(
     {
       ...patch,
@@ -61,8 +80,11 @@ async function updateBoxById(boxId, patch) {
     { merge: true },
   )
 
-  const updated = await docRef.get()
-  return mapDoc(updated)
+  return {
+    ...current,
+    ...patch,
+    updatedAt: new Date(),
+  }
 }
 
 async function deleteBoxById(boxId) {
@@ -78,6 +100,7 @@ async function deleteBoxById(boxId) {
 module.exports = {
   createBox,
   getBoxById,
+  getBoxesByIds,
   listBoxes,
   listBoxesByOrganization,
   updateBoxById,

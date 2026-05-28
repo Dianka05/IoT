@@ -37,7 +37,7 @@ import {
 import SurfaceCard from "../components/surfaceCard";
 import { getDisplayStatus } from "../utils/equipmentStatus";
 
-const ACTIVE_SESSION_STATUSES = new Set(['pending', 'active']);
+const ACTIVE_SESSION_STATUSES = new Set(['ready_for_auth', 'missed', 'active']);
 const ALERT_TYPES = new Set([
   'auth_denied',
   'blocked_card_attempt',
@@ -129,14 +129,25 @@ function buildActivityItems(sessions, deviceNameMap) {
       };
     }
 
-    if (status === 'pending') {
+    if (status === 'ready_for_auth') {
       return {
         id: session.id,
         icon: <Ban className="text-orange-500" />,
-        title: 'Reservation pending',
+        title: 'Reservation ready',
         desc,
-        time: formatClock(session.createdAt),
+        time: formatClock(session.authWindowEndsAt || session.scheduledStartAt || session.createdAt),
         bg: 'bg-orange-50',
+      };
+    }
+
+    if (status === 'missed') {
+      return {
+        id: session.id,
+        icon: <AlertTriangle className="text-amber-600" />,
+        title: 'Reservation missed',
+        desc,
+        time: formatClock(session.scheduledEndAt || session.updatedAt || session.createdAt),
+        bg: 'bg-amber-50',
       };
     }
 
@@ -335,7 +346,7 @@ const Dashboard = () => {
 
   const currentUserActiveSession = useMemo(
     () => currentUserSessions.find((session) =>
-      ACTIVE_SESSION_STATUSES.has(String(session.status || '').toLowerCase())
+      String(session.status || '').toLowerCase() === 'active'
     ) || null,
     [currentUserSessions]
   );
