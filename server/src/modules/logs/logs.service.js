@@ -33,6 +33,14 @@ function serializeError(err) {
 }
 
 async function resolveOrganizationId(payload = {}, session = null) {
+  if (payload.organizationId) {
+    return payload.organizationId
+  }
+
+  if (session?.organizationId) {
+    return session.organizationId
+  }
+
   const boxId = payload.boxId || session?.boxId || null
 
   if (!boxId) {

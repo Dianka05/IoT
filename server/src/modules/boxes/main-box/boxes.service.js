@@ -8,7 +8,7 @@ const {
   updateBoxById,
   deleteBoxById,
 } = require('./boxes.store.firestore')
-const { getDeviceById } = require('../../devices/fan-1/devices.store.firestore')
+const { getDevicesByIds } = require('../../devices/fan-1/devices.store.firestore')
 const { getAccessibleOrganizationIds } = require('../../users/users.service')
 const { applyConnectivityFreshness } = require('../../../shared/connectivity-state')
 const { buildOccupancyMaps } = require('../../../shared/session-occupancy')
@@ -67,8 +67,12 @@ function resolveTargetOrganizationId(userProfile, requestedOrganizationId = null
 }
 
 async function assertDevicesBelongToOrganization(deviceIds = [], organizationId) {
-  for (const deviceId of deviceIds) {
-    const device = await getDeviceById(deviceId)
+  const normalizedDeviceIds = [...new Set(deviceIds.filter(Boolean))]
+  const devices = await getDevicesByIds(normalizedDeviceIds)
+  const deviceMap = new Map(devices.map((device) => [String(device.deviceId || device.id), device]))
+
+  for (const deviceId of normalizedDeviceIds) {
+    const device = deviceMap.get(String(deviceId))
 
     if (!device) {
       throw new Error(`DEVICE_NOT_FOUND:${deviceId}`)

@@ -10,6 +10,7 @@ const Filters = ({ onFilter, onRefresh, eventTypeOptions = [] }) => {
 
   const [filterPressed, setFilterPressed] = useState(false);
   const [refreshPressed, setRefreshPressed] = useState(false);
+  const [resetPressed, setResetPressed] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -34,6 +35,19 @@ const Filters = ({ onFilter, onRefresh, eventTypeOptions = [] }) => {
 
       setRefreshPressed(false);
     }, 150);
+  };
+
+  const handleReset = () => {
+    setResetPressed(true);
+
+    setEventType("");
+    setUser("");
+    setEquipment("");
+    setDateFrom("");
+    setDateTo("");
+    onFilter({ eventType: "", user: "", equipment: "", dateFrom: "", dateTo: "" });
+
+    setTimeout(() => setResetPressed(false), 200);
   };
 
   return (
@@ -105,7 +119,6 @@ const Filters = ({ onFilter, onRefresh, eventTypeOptions = [] }) => {
       </div>
 
       <div className="ml-auto flex gap-3">
-
         <button
           type="submit"
           className={`
@@ -119,6 +132,22 @@ const Filters = ({ onFilter, onRefresh, eventTypeOptions = [] }) => {
         >
           <Filter size={18} className={filterPressed ? "animate-spin" : ""} />
           Filter Logs
+        </button>
+
+        <button
+          type="button"
+          onClick={handleReset}
+          className={`
+            flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+            border border-slate-200
+            ${resetPressed
+              ? "bg-slate-300 text-slate-900 shadow-lg shadow-slate-400/50"
+              : "bg-white text-slate-700 hover:bg-slate-100"
+            }
+          `}
+        >
+          <RotateCcw size={18} className={resetPressed ? "animate-spin" : ""} />
+          Reset All
         </button>
 
         <button

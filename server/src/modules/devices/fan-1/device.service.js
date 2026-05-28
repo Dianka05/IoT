@@ -7,7 +7,10 @@ const {
   updateDeviceById,
   deleteDeviceById,
 } = require('./devices.store.firestore')
-const { getBoxById } = require('../../boxes/main-box/boxes.store.firestore')
+const {
+  getBoxById,
+  getBoxesByIds,
+} = require('../../boxes/main-box/boxes.store.firestore')
 const { getAccessibleOrganizationIds } = require('../../users/users.service')
 const { applyConnectivityFreshness } = require('../../../shared/connectivity-state')
 const { buildOccupancyMaps } = require('../../../shared/session-occupancy')
@@ -101,11 +104,14 @@ function applyManualStatusPatch(current, patch = {}) {
 async function getDevicesForOrganization(organizationId, limit = 50) {
   const items = await listDevicesByOrganization(organizationId, limit)
   const occupancy = await buildOccupancyMaps(organizationId)
+  const boxes = await getBoxesByIds(items.map((item) => item.boxId).filter(Boolean))
+  const boxMap = new Map(
+    boxes.map((box) => [String(box.boxId || box.id || ''), applyConnectivityFreshness(box)])
+  )
 
-  return Promise.all(items.map(async (item) => {
+  return items.map((item) => {
     const deviceId = item.deviceId || item.id
-    const box = item.boxId ? await getBoxById(item.boxId) : null
-    const freshBox = box ? applyConnectivityFreshness(box) : null
+    const freshBox = item.boxId ? boxMap.get(String(item.boxId)) || null : null
 
     return applyConnectivityFreshness({
       ...item,
@@ -118,7 +124,7 @@ async function getDevicesForOrganization(organizationId, limit = 50) {
         : null,
       occupancy: occupancy.byDeviceId.get(deviceId) || null,
     })
-  }))
+  })
 }
 
 async function getDevices(limit = 50) {

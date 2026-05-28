@@ -17,22 +17,34 @@ export default function SessionsRow({ session, onTerminate }) {
     durationMinutes,
   } = session;
 
-  const isEnded = status === "ENDED";
+  const isEnded = status === "ENDED" || status === "EXPIRED" || status === "CANCELLED";
   const [nameFallback, roleFallbackRaw] = String(user || "Unknown User (User)").split(" (");
   const name = userName || nameFallback;
   const role = userRole || roleFallbackRaw?.replace(")", "") || "User";
   const primaryHardware = hardwareLabel || String(hardware || "").split(" ")[0] || "Unknown";
   const secondaryHardware = boxLabel || String(hardware || "").split(" ").slice(1).join(" ");
-  const isTerminable = status === "ACTIVE" || status === "PENDING";
+  const isTerminable =
+    status === "ACTIVE" ||
+    status === "SCHEDULED" ||
+    status === "READY" ||
+    status === "MISSED";
 
   const statusBadge =
     status === "ACTIVE" ? (
       <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-green-700">
         Active
       </span>
-    ) : status === "PENDING" ? (
+    ) : status === "SCHEDULED" ? (
+      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-slate-700">
+        Scheduled
+      </span>
+    ) : status === "READY" ? (
       <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-orange-700">
-        Pending
+        Ready
+      </span>
+    ) : status === "MISSED" ? (
+      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-amber-700">
+        Missed
       </span>
     ) : (
       <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-slate-600">
@@ -45,7 +57,7 @@ export default function SessionsRow({ session, onTerminate }) {
       onClick={() => onTerminate(id)}
       className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700"
     >
-      Terminate
+      {status === "ACTIVE" ? "Terminate" : "Cancel"}
     </button>
   ) : (
     <Link

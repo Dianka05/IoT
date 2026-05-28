@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
 
+function getInitialScheduledValues() {
+  const nextMinute = new Date(Date.now() + 60 * 1000);
+  const iso = new Date(nextMinute.getTime() - nextMinute.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+  const [date, time] = iso.split("T");
+
+  return {
+    date,
+    time,
+  };
+}
+
 function FieldLabel({ children }) {
   return (
     <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
@@ -40,16 +53,23 @@ export default function SessionReservationModal({
   const [boxId, setBoxId] = useState("");
   const [deviceIds, setDeviceIds] = useState([]);
   const [sessionDurationSec, setSessionDurationSec] = useState(String(defaultDurationSec || 1800));
+  const [startMode, setStartMode] = useState("now");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
+    const initialScheduled = getInitialScheduledValues();
     const firstBoxId = boxes[0]?.boxId || boxes[0]?.id || "";
     setBoxId(firstBoxId);
     setDeviceIds([]);
     setSessionDurationSec(String(defaultDurationSec || 1800));
+    setStartMode("now");
+    setScheduledDate(initialScheduled.date);
+    setScheduledTime(initialScheduled.time);
   }, [open, defaultDurationSec]);
 
   useEffect(() => {
@@ -72,13 +92,17 @@ export default function SessionReservationModal({
     () => devices.filter((device) => (device.boxId || "") === boxId),
     [devices, boxId]
   );
-  const freeDevices = useMemo(
+  const selectableDevices = useMemo(
     () =>
       availableDevices.filter((device) => {
         const status = String(device.occupancy?.status || "").toLowerCase();
-        return status !== "pending" && status !== "active";
+        if (startMode === "later") {
+          return true;
+        }
+
+        return status !== "ready_for_auth" && status !== "missed" && status !== "active";
       }),
-    [availableDevices]
+    [availableDevices, startMode]
   );
 
   if (!open) {
@@ -100,14 +124,29 @@ export default function SessionReservationModal({
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
+    const scheduledStartAt =
+      startMode === "later" && scheduledDate && scheduledTime
+        ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+        : null;
+
     onSubmit?.({
       boxId,
       uid: activeCardUid,
       deviceIds,
       sessionDurationSec: Number(sessionDurationSec || defaultDurationSec || 1800),
-      mode: "manual",
+      mode: startMode === "later" ? "scheduled" : "manual",
+      scheduledStartAt,
     });
   };
+
+  const requiresScheduleFields = startMode === "later";
+  const canSubmit =
+    !submitting &&
+    !!boxId &&
+    deviceIds.length > 0 &&
+    !!activeCardUid &&
+    (!requiresScheduleFields || (scheduledDate && scheduledTime));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
@@ -135,7 +174,7 @@ export default function SessionReservationModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-7">
           <div className="space-y-8">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            Choose one box, then select the free devices inside it. The reservation becomes active only after you tap this RFID card at the box.
+            Choose one box, then select the devices you want to reserve. RFID confirmation still happens at the box when the reservation window begins.
           </div>
 
           <div className="grid gap-8 md:grid-cols-2">
@@ -148,11 +187,61 @@ export default function SessionReservationModal({
               <FieldLabel>Session Duration (Seconds)</FieldLabel>
               <TextInput
                 type="number"
-                min="0"
+                min="1"
                 value={sessionDurationSec}
                 onChange={(event) => setSessionDurationSec(event.target.value)}
               />
             </div>
+
+            <div className="md:col-span-2">
+              <FieldLabel>Start Mode</FieldLabel>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStartMode("now")}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    startMode === "now"
+                      ? "border-orange-200 bg-orange-50 text-orange-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  Start Now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStartMode("later")}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    startMode === "later"
+                      ? "border-orange-200 bg-orange-50 text-orange-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  Schedule For Later
+                </button>
+              </div>
+            </div>
+
+            {startMode === "later" && (
+              <>
+                <div>
+                  <FieldLabel>Date</FieldLabel>
+                  <TextInput
+                    type="date"
+                    value={scheduledDate}
+                    onChange={(event) => setScheduledDate(event.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Start Time</FieldLabel>
+                  <TextInput
+                    type="time"
+                    value={scheduledTime}
+                    onChange={(event) => setScheduledTime(event.target.value)}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="md:col-span-2">
               <FieldLabel>Box</FieldLabel>
@@ -183,12 +272,25 @@ export default function SessionReservationModal({
               ) : (
                 <div className="space-y-3">
                   <p className="text-xs font-semibold text-slate-400">
-                    Only devices that are free right now can be selected.
+                    {startMode === "later"
+                      ? "You can schedule a device that is currently in use. The server will still reject overlapping time windows."
+                      : "For start now, only devices that are free right now can be selected."}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                  {freeDevices.map((device) => {
+                  {selectableDevices.map((device) => {
                     const deviceId = device.deviceId || device.id;
                     const selected = deviceIds.includes(deviceId);
+                    const occupancyStatus = String(device.occupancy?.status || "").toLowerCase();
+                    const occupancyUserName =
+                      device.occupancy?.userName || device.occupancy?.userId || "another user";
+                    const occupancyText =
+                      occupancyStatus === "active"
+                        ? ` | in use by ${occupancyUserName}`
+                        : occupancyStatus === "ready_for_auth"
+                          ? ` | ready for ${occupancyUserName}`
+                          : occupancyStatus === "missed"
+                            ? ` | late claim for ${occupancyUserName}`
+                            : "";
 
                     return (
                       <button
@@ -201,15 +303,15 @@ export default function SessionReservationModal({
                             : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                         }`}
                       >
-                        {device.name || deviceId}
+                        {device.name || deviceId}{occupancyText}
                       </button>
                     );
                   })}
                   </div>
 
-                  {availableDevices.some((device) => {
+                  {startMode === "now" && availableDevices.some((device) => {
                     const status = String(device.occupancy?.status || "").toLowerCase();
-                    return status === "pending" || status === "active";
+                    return status === "ready_for_auth" || status === "missed" || status === "active";
                   }) && (
                     <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <p className="text-xs font-black uppercase tracking-[0.15em] text-slate-400">
@@ -219,7 +321,7 @@ export default function SessionReservationModal({
                         {availableDevices
                           .filter((device) => {
                             const status = String(device.occupancy?.status || "").toLowerCase();
-                            return status === "pending" || status === "active";
+                            return status === "ready_for_auth" || status === "missed" || status === "active";
                           })
                           .map((device) => {
                             const deviceId = device.deviceId || device.id;
@@ -232,7 +334,13 @@ export default function SessionReservationModal({
                                 key={deviceId}
                                 className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500"
                               >
-                                {device.name || deviceId} | {occupancyStatus === "active" ? `in use by ${occupancyUserName}` : `reserved by ${occupancyUserName}`}
+                                {device.name || deviceId} | {
+                                  occupancyStatus === "active"
+                                    ? `in use by ${occupancyUserName}`
+                                    : occupancyStatus === "ready_for_auth"
+                                      ? `ready for ${occupancyUserName}`
+                                      : `held for ${occupancyUserName}`
+                                }
                               </span>
                             );
                           })}
@@ -248,7 +356,7 @@ export default function SessionReservationModal({
 
         <div className="sticky bottom-0 flex flex-col gap-4 border-t border-slate-100 bg-white px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6">
           <p className="text-xs leading-5 text-slate-500">
-            The reservation button stays disabled until you choose a box, select at least one free device, and have an active RFID card.
+            The reservation button stays disabled until you choose a box, select at least one device, and have an active RFID card. Later reservations also need both date and time.
           </p>
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -263,7 +371,7 @@ export default function SessionReservationModal({
 
           <button
             type="submit"
-            disabled={submitting || !boxId || deviceIds.length === 0 || !activeCardUid}
+            disabled={!canSubmit}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             <Plus size={16} />

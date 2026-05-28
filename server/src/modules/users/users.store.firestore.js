@@ -13,14 +13,24 @@ function normalizeUid(uid) {
     .toUpperCase()
 }
 
+function deriveCardUids(cards = []) {
+  if (!Array.isArray(cards)) {
+    return []
+  }
+
+  return [...new Set(cards.map((card) => normalizeUid(card?.uid)).filter(Boolean))]
+}
+
 async function upsertUser(user) {
   const userId = user.userId
   const docRef = db.collection('users').doc(userId)
   const existing = await docRef.get()
+  const nextCardUids = user.cards !== undefined ? deriveCardUids(user.cards) : undefined
 
   await docRef.set(
     {
       ...user,
+      ...(nextCardUids !== undefined ? { cardUids: nextCardUids } : {}),
       ...(existing.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
       updatedAt: FieldValue.serverTimestamp(),
     },
@@ -34,30 +44,84 @@ async function upsertUser(user) {
 
 async function getUserByActiveCardUid(uid) {
   const normalizedUid = normalizeUid(uid)
-  const snapshot = await db.collection('users').limit(100).get()
+  const indexedSnapshot = await db
+    .collection('users')
+    .where('cardUids', 'array-contains', normalizedUid)
+    .limit(20)
+    .get()
 
-  const item = snapshot.docs
+  const indexedItem = indexedSnapshot.docs
     .map(mapDoc)
     .find((user) =>
       Array.isArray(user.cards) &&
       user.cards.some((card) => normalizeUid(card.uid) === normalizedUid && card.status === 'active')
     )
 
-  return item || null
+  if (indexedItem) {
+    return indexedItem
+  }
+
+  const fallbackSnapshot = await db.collection('users').limit(100).get()
+
+  const fallbackItem = fallbackSnapshot.docs
+    .map(mapDoc)
+    .find((user) =>
+      Array.isArray(user.cards) &&
+      user.cards.some((card) => normalizeUid(card.uid) === normalizedUid && card.status === 'active')
+    )
+
+  if (fallbackItem && !Array.isArray(fallbackItem.cardUids)) {
+    await db.collection('users').doc(fallbackItem.userId || fallbackItem.id).set(
+      {
+        cardUids: deriveCardUids(fallbackItem.cards),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    )
+  }
+
+  return fallbackItem || null
 }
 
 async function getUserByCardUid(uid) {
   const normalizedUid = normalizeUid(uid)
-  const snapshot = await db.collection('users').limit(200).get()
+  const indexedSnapshot = await db
+    .collection('users')
+    .where('cardUids', 'array-contains', normalizedUid)
+    .limit(20)
+    .get()
 
-  const item = snapshot.docs
+  const indexedItem = indexedSnapshot.docs
     .map(mapDoc)
     .find((user) =>
       Array.isArray(user.cards) &&
       user.cards.some((card) => normalizeUid(card.uid) === normalizedUid)
     )
 
-  return item || null
+  if (indexedItem) {
+    return indexedItem
+  }
+
+  const fallbackSnapshot = await db.collection('users').limit(200).get()
+
+  const fallbackItem = fallbackSnapshot.docs
+    .map(mapDoc)
+    .find((user) =>
+      Array.isArray(user.cards) &&
+      user.cards.some((card) => normalizeUid(card.uid) === normalizedUid)
+    )
+
+  if (fallbackItem && !Array.isArray(fallbackItem.cardUids)) {
+    await db.collection('users').doc(fallbackItem.userId || fallbackItem.id).set(
+      {
+        cardUids: deriveCardUids(fallbackItem.cards),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    )
+  }
+
+  return fallbackItem || null
 }
 
 async function getUserByAuthUid(authUid) {
@@ -101,16 +165,24 @@ async function updateUserById(userId, patch) {
 
   if (!existing.exists) return null
 
+  const current = mapDoc(existing)
+  const nextCardUids = patch.cards !== undefined ? deriveCardUids(patch.cards) : undefined
+
   await docRef.set(
     {
       ...patch,
+      ...(nextCardUids !== undefined ? { cardUids: nextCardUids } : {}),
       updatedAt: FieldValue.serverTimestamp(),
     },
     { merge: true },
   )
 
-  const updated = await docRef.get()
-  return mapDoc(updated)
+  return {
+    ...current,
+    ...patch,
+    ...(nextCardUids !== undefined ? { cardUids: nextCardUids } : {}),
+    updatedAt: new Date(),
+  }
 }
 
 async function deleteUserById(userId) {

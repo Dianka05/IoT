@@ -10,7 +10,9 @@ const {
   updateUserById,
   deleteUserById,
 } = require('./users.store.firestore')
-const { getDeviceById } = require('../devices/fan-1/devices.store.firestore')
+const {
+  getDevicesByIds,
+} = require('../devices/fan-1/devices.store.firestore')
 
 function uniqueStrings(values = []) {
   return [...new Set(values.filter(Boolean).map((value) => String(value)))]
@@ -71,6 +73,17 @@ function getMembershipForOrganization(user, organizationId) {
   return match ? normalizeMembership(match) : null
 }
 
+function findFirstActiveOrganizationId(user, candidateOrganizationIds = []) {
+  for (const organizationId of candidateOrganizationIds) {
+    const membership = getMembershipForOrganization(user, organizationId)
+    if (membership?.active !== false) {
+      return organizationId
+    }
+  }
+
+  return null
+}
+
 function getAccessibleOrganizationIds(user) {
   const membershipIds = Array.isArray(user?.memberships)
     ? user.memberships.map((membership) => membership.organizationId)
@@ -85,6 +98,47 @@ function getAccessibleOrganizationIds(user) {
 
 function resolveCurrentOrganizationId(user, preferredOrganizationId = null) {
   const accessibleOrganizationIds = getAccessibleOrganizationIds(user)
+  const activeOrganizationId = findFirstActiveOrganizationId(
+    user,
+    accessibleOrganizationIds
+  )
+  const preferredMembership = preferredOrganizationId
+    ? getMembershipForOrganization(user, preferredOrganizationId)
+    : null
+
+  if (
+    preferredOrganizationId &&
+    accessibleOrganizationIds.includes(preferredOrganizationId) &&
+    preferredMembership?.active !== false
+  ) {
+    return preferredOrganizationId
+  }
+
+  const currentMembership = user?.currentOrganizationId
+    ? getMembershipForOrganization(user, user.currentOrganizationId)
+    : null
+  if (
+    user?.currentOrganizationId &&
+    accessibleOrganizationIds.includes(user.currentOrganizationId) &&
+    currentMembership?.active !== false
+  ) {
+    return user.currentOrganizationId
+  }
+
+  const legacyMembership = user?.organizationId
+    ? getMembershipForOrganization(user, user.organizationId)
+    : null
+  if (
+    user?.organizationId &&
+    accessibleOrganizationIds.includes(user.organizationId) &&
+    legacyMembership?.active !== false
+  ) {
+    return user.organizationId
+  }
+
+  if (activeOrganizationId) {
+    return activeOrganizationId
+  }
 
   if (
     preferredOrganizationId &&
@@ -122,6 +176,10 @@ function normalizeUserProfile(user, preferredOrganizationId = null) {
     currentOrganizationId
   )
   const organizationIds = getAccessibleOrganizationIds(user)
+  const hasAnyActiveMembership = organizationIds.some((organizationId) => {
+    const membership = getMembershipForOrganization(user, organizationId)
+    return membership?.active !== false
+  })
 
   return {
     ...user,
@@ -132,8 +190,11 @@ function normalizeUserProfile(user, preferredOrganizationId = null) {
       ? user.memberships.map(normalizeMembership)
       : [],
     currentMembership,
+    hasAnyActiveMembership,
     role: currentMembership?.role || null,
-    active: currentMembership ? currentMembership.active !== false : true,
+    active: currentMembership
+      ? currentMembership.active !== false
+      : hasAnyActiveMembership,
     allowedDeviceIds: currentMembership?.allowedDeviceIds || [],
     mustChangePassword: user.mustChangePassword === true,
     cards: normalizeCards(user.cards),
@@ -176,8 +237,12 @@ function upsertMembership(user, membership) {
 }
 
 async function assertAllowedDevicesInOrganization(organizationId, allowedDeviceIds = []) {
-  for (const deviceId of uniqueStrings(allowedDeviceIds)) {
-    const device = await getDeviceById(deviceId)
+  const normalizedDeviceIds = uniqueStrings(allowedDeviceIds)
+  const devices = await getDevicesByIds(normalizedDeviceIds)
+  const deviceMap = new Map(devices.map((device) => [String(device.deviceId || device.id), device]))
+
+  for (const deviceId of normalizedDeviceIds) {
+    const device = deviceMap.get(deviceId)
 
     if (!device) {
       throw new Error(`DEVICE_NOT_FOUND:${deviceId}`)

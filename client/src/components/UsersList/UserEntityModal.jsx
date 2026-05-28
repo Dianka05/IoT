@@ -287,10 +287,10 @@ export default function UserEntityModal({
                     type="password"
                     value={form.password}
                     onChange={(event) => setField("password", event.target.value)}
-                    placeholder="Temporary password to share with the user"
+                    placeholder="Only needed for a brand-new account"
                   />
                   <p className="mt-2 text-xs leading-5 text-slate-500">
-                    A temporary password is only used when this is a brand-new account. Existing users keep their current password.
+                    Leave this empty if the email already belongs to an existing user in another organization. Existing users keep their current password.
                   </p>
                 </div>
               )}

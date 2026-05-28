@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Building2, Plus } from 'lucide-react'
 import { createOrganization } from '../api/organizations'
@@ -11,7 +11,13 @@ function normalizeOrganizationId(value) {
   return String(value || '')
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+}
+
+function createSuffix() {
+  return String(Math.floor(1000 + Math.random() * 9000))
 }
 
 export default function CreateOrganization() {
@@ -27,10 +33,16 @@ export default function CreateOrganization() {
 
   const [form, setForm] = useState({
     name: '',
-    organizationId: '',
   })
+  const [organizationSuffix] = useState(() => createSuffix())
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const organizationIdPreview = useMemo(() => {
+    const normalizedName = normalizeOrganizationId(form.name)
+    return normalizedName
+      ? `${normalizedName}-${organizationSuffix}`
+      : `organization-${organizationSuffix}`
+  }, [form.name, organizationSuffix])
 
   if (authLoading) {
     return <LoadingScreen />
@@ -52,7 +64,6 @@ export default function CreateOrganization() {
         return {
           ...prev,
           name: value,
-          organizationId: prev.organizationId || normalizeOrganizationId(value),
         }
       }
 
@@ -68,15 +79,10 @@ export default function CreateOrganization() {
     setError('')
 
     const name = String(form.name || '').trim()
-    const organizationId = normalizeOrganizationId(form.organizationId)
+    const organizationId = organizationIdPreview
 
     if (!name) {
       setError('Organization name is required')
-      return
-    }
-
-    if (!organizationId) {
-      setError('Organization ID is required')
       return
     }
 
@@ -146,15 +152,13 @@ export default function CreateOrganization() {
             </label>
             <input
               type="text"
-              name="organizationId"
-              value={form.organizationId}
-              onChange={handleChange}
-              disabled={submitting}
-              placeholder="org-1"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-300 focus:border-orange-400"
+              value={organizationIdPreview}
+              readOnly
+              disabled
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 outline-none"
             />
             <p className="mt-2 text-xs text-slate-400">
-              Use a stable ID like <span className="font-semibold">org-1</span> or <span className="font-semibold">acme-lab</span>.
+              This ID is generated automatically from the organization name and a short unique suffix.
             </p>
           </div>
 

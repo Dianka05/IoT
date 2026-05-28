@@ -22,7 +22,12 @@ async function createDevice(device) {
     updatedAt: FieldValue.serverTimestamp(),
   })
 
-  return getDeviceById(deviceId)
+  return {
+    id: deviceId,
+    ...device,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
 }
 
 async function getDeviceById(deviceId) {
@@ -30,6 +35,18 @@ async function getDeviceById(deviceId) {
   if (!doc.exists) return null
 
   return mapDoc(doc)
+}
+
+async function getDevicesByIds(deviceIds = []) {
+  const normalizedIds = [...new Set(deviceIds.filter(Boolean))]
+  if (normalizedIds.length === 0) {
+    return []
+  }
+
+  const refs = normalizedIds.map((deviceId) => db.collection('devices').doc(deviceId))
+  const docs = await db.getAll(...refs)
+
+  return docs.filter((doc) => doc.exists).map(mapDoc)
 }
 
 async function listDevices(limit = 50) {
@@ -53,6 +70,8 @@ async function updateDeviceById(deviceId, patch) {
 
   if (!existing.exists) return null
 
+  const current = mapDoc(existing)
+
   await docRef.set(
     {
       ...patch,
@@ -61,8 +80,11 @@ async function updateDeviceById(deviceId, patch) {
     { merge: true },
   )
 
-  const updated = await docRef.get()
-  return mapDoc(updated)
+  return {
+    ...current,
+    ...patch,
+    updatedAt: new Date(),
+  }
 }
 
 async function deleteDeviceById(deviceId) {
@@ -78,6 +100,7 @@ async function deleteDeviceById(deviceId) {
 module.exports = {
   createDevice,
   getDeviceById,
+  getDevicesByIds,
   listDevices,
   listDevicesByOrganization,
   updateDeviceById,
