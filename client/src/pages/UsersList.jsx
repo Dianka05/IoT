@@ -176,17 +176,15 @@ export default function UsersList() {
           throw new Error("Email is required");
         }
 
-        if (!password) {
-          throw new Error("Temporary password is required");
-        }
-
         await createUser({
           ...payload,
           cards,
-          password,
+          ...(password ? { password } : {}),
           allowedDeviceIds: values.allowedDeviceIds || [],
         });
-        toast.success("User created", "The new user can now log in with the temporary password you set.");
+        toast.success("User created", password
+          ? "The new user can now log in with the temporary password you set."
+          : "If this email already exists, the account was added to the current organization.");
       } else {
         const userId =
           modalState.initialValues?.id ||

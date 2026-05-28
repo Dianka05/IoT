@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Dashboard from './pages/dashboard';
 import DeviceDetails from './pages/DeviceDetails';
 import UsersList from './pages/UsersList';
@@ -16,25 +17,108 @@ import Configuration from './pages/Configuration';
 import LoadingScreen from './components/loadingScreen';
 import { useAuth } from './auth/AuthContext';
 import { getDefaultRouteForRole } from './auth/roles';
+import { useToast } from './toast/ToastProvider';
 
 const Maintenance = () => <div className="p-8">Maintenance Page (In Progress)</div>;
 const Settings = () => <div className="p-8">Settings Page (In Progress)</div>;
-const AccessRestricted = () => (
-  <div className="min-h-screen bg-[#f5f7fb] px-4 py-10 text-slate-800">
-    <div className="mx-auto max-w-2xl rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
-      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-500">
-        Access Restricted
-      </p>
-      <h1 className="mt-3 text-3xl font-black text-slate-900">
-        Your access is currently limited
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
-        Your profile is inactive in the selected organization, so the dashboard and equipment tools are unavailable right now.
-        Please contact an administrator if you need access restored.
-      </p>
+function AccessRestricted() {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [switchingOrganization, setSwitchingOrganization] = useState(false);
+  const {
+    profile,
+    organizations,
+    currentOrganizationId,
+    setCurrentOrganization,
+  } = useAuth();
+
+  const memberships = Array.isArray(profile?.memberships) ? profile.memberships : [];
+  const organizationItems = organizations.length > 0
+    ? organizations
+    : (Array.isArray(profile?.organizationIds) ? profile.organizationIds : []).map((organizationId) => ({
+        organizationId,
+        name: organizationId,
+      }));
+  const activeOrganizations = organizationItems.filter((organization) => {
+    const organizationId = organization.organizationId || organization.id;
+    const membership = memberships.find((item) => item.organizationId === organizationId);
+    return membership?.active !== false;
+  });
+
+  const handleSwitchOrganization = async (organizationId) => {
+    if (!organizationId || organizationId === currentOrganizationId) {
+      return;
+    }
+
+    setSwitchingOrganization(true);
+
+    try {
+      await setCurrentOrganization(organizationId);
+      toast.success("Organization switched", "You can continue working in the selected organization.");
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      console.error('Failed to switch organization from restricted access screen:', err);
+      toast.error("Switch failed", err.message || "Could not switch to the selected organization.");
+    } finally {
+      setSwitchingOrganization(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f5f7fb] px-4 py-10 text-slate-800">
+      <div className="mx-auto max-w-2xl rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-500">
+          Access Restricted
+        </p>
+        <h1 className="mt-3 text-3xl font-black text-slate-900">
+          Your access is currently limited
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          Your profile is inactive in the selected organization, so the dashboard and equipment tools are unavailable right now.
+          {activeOrganizations.length > 0
+            ? ' You can switch to another organization where your access is still active.'
+            : ' Please contact an administrator if you need access restored.'}
+        </p>
+
+        {activeOrganizations.length > 0 && (
+          <div className="mt-8 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+              Available Organizations
+            </p>
+            <div className="mt-4 space-y-3">
+              {activeOrganizations.map((organization) => {
+                const organizationId = organization.organizationId || organization.id;
+                const isCurrent = organizationId === currentOrganizationId;
+
+                return (
+                  <button
+                    key={organizationId}
+                    type="button"
+                    onClick={() => handleSwitchOrganization(organizationId)}
+                    disabled={switchingOrganization || isCurrent}
+                    className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-orange-300 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">
+                        {organization.name || organizationId}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {organizationId}
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-orange-500">
+                      {isCurrent ? 'Current' : 'Switch'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+}
 
 function HomeRoute() {
   const {

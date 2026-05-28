@@ -78,6 +78,7 @@ function SidebarContent({
   userName,
   loading,
   organizations,
+  memberships,
   currentOrganizationId,
   onSwitchOrganization,
   switchingOrganization,
@@ -87,6 +88,11 @@ function SidebarContent({
   const roleLabel = getRoleLabel(role, loading);
   const navItems = getNavItems(role);
   const canCreateOrganization = role === 'admin';
+  const activeOrganizations = organizations.filter((organization) => {
+    const organizationId = organization.organizationId || organization.id;
+    const membership = memberships.find((item) => item.organizationId === organizationId);
+    return membership?.active !== false;
+  });
 
   return (
     <div className="flex flex-col h-full">
@@ -111,7 +117,7 @@ function SidebarContent({
         </div>
       </div>
 
-      {organizations.length > 0 && (
+      {activeOrganizations.length > 0 && (
         <div className="px-4 pb-4">
           <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-4">
             <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
@@ -125,7 +131,7 @@ function SidebarContent({
               disabled={switchingOrganization}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {organizations.map((organization) => {
+              {activeOrganizations.map((organization) => {
                 const organizationId = organization.organizationId || organization.id;
 
                 return (
@@ -202,6 +208,7 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
     setCurrentOrganization,
     clearAuth,
   } = useAuth();
+  const memberships = Array.isArray(profile?.memberships) ? profile.memberships : [];
   const role = roleProp || profile?.role || authRole || null;
   const userName = userNameProp || profile?.name || profile?.email || 'Loading';
 
@@ -255,6 +262,7 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
           userName={userName}
           loading={loading}
           organizations={organizations}
+          memberships={memberships}
           currentOrganizationId={currentOrganizationId}
           onSwitchOrganization={handleSwitchOrganization}
           switchingOrganization={switchingOrganization}
@@ -284,6 +292,7 @@ export default function Sidebar({ isOpen, setIsOpen, role: roleProp, userName: u
           userName={userName}
           loading={loading}
           organizations={organizations}
+          memberships={memberships}
           currentOrganizationId={currentOrganizationId}
           onSwitchOrganization={handleSwitchOrganization}
           switchingOrganization={switchingOrganization}
