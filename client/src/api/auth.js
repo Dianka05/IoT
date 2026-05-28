@@ -1,12 +1,12 @@
 import { API_URL, request, unwrapData } from './request'
 
-export const register = async (email, password, name = '') => {
+export const register = async (email, password, name = '', customerIdentifierNumber = '') => {
   const response = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, password, name }),
+    body: JSON.stringify({ email, password, name, customerIdentifierNumber }),
     credentials: 'include',
   });
   const payload = await response.json().catch(() => ({
