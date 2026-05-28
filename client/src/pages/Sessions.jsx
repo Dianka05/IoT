@@ -308,7 +308,7 @@ export default function Sessions() {
           return false;
         }
 
-        return status !== "maintenance" && status !== "offline" && status !== "busy" && status !== "reserved" && status !== "in_use";
+        return status !== "maintenance" && status !== "offline";
       }),
     [devices, allowedDeviceIds, boxStatusMap]
   );
@@ -373,10 +373,10 @@ export default function Sessions() {
     }
 
     if (reservableBoxes.length === 0) {
-      return "No available boxes are ready right now. A box or device may be offline, in maintenance, reserved, or already in use.";
+      return "No boxes are available right now. Your assigned box or devices may be offline or in maintenance.";
     }
 
-    return "Choose a box first, then pick one or more available devices inside it.";
+    return "Choose a box first. For reservations scheduled later, you can also select a device that is currently in use as long as the time window does not overlap.";
   }, [activeCardUid, allowedDeviceIds, reservableBoxes]);
 
   if (authLoading) {

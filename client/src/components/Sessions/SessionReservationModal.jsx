@@ -92,13 +92,17 @@ export default function SessionReservationModal({
     () => devices.filter((device) => (device.boxId || "") === boxId),
     [devices, boxId]
   );
-  const freeDevices = useMemo(
+  const selectableDevices = useMemo(
     () =>
       availableDevices.filter((device) => {
         const status = String(device.occupancy?.status || "").toLowerCase();
+        if (startMode === "later") {
+          return true;
+        }
+
         return status !== "ready_for_auth" && status !== "missed" && status !== "active";
       }),
-    [availableDevices]
+    [availableDevices, startMode]
   );
 
   if (!open) {
@@ -268,12 +272,25 @@ export default function SessionReservationModal({
               ) : (
                 <div className="space-y-3">
                   <p className="text-xs font-semibold text-slate-400">
-                    Only devices that are free right now can be selected.
+                    {startMode === "later"
+                      ? "You can schedule a device that is currently in use. The server will still reject overlapping time windows."
+                      : "For start now, only devices that are free right now can be selected."}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                  {freeDevices.map((device) => {
+                  {selectableDevices.map((device) => {
                     const deviceId = device.deviceId || device.id;
                     const selected = deviceIds.includes(deviceId);
+                    const occupancyStatus = String(device.occupancy?.status || "").toLowerCase();
+                    const occupancyUserName =
+                      device.occupancy?.userName || device.occupancy?.userId || "another user";
+                    const occupancyText =
+                      occupancyStatus === "active"
+                        ? ` | in use by ${occupancyUserName}`
+                        : occupancyStatus === "ready_for_auth"
+                          ? ` | ready for ${occupancyUserName}`
+                          : occupancyStatus === "missed"
+                            ? ` | late claim for ${occupancyUserName}`
+                            : "";
 
                     return (
                       <button
@@ -286,13 +303,13 @@ export default function SessionReservationModal({
                             : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                         }`}
                       >
-                        {device.name || deviceId}
+                        {device.name || deviceId}{occupancyText}
                       </button>
                     );
                   })}
                   </div>
 
-                  {availableDevices.some((device) => {
+                  {startMode === "now" && availableDevices.some((device) => {
                     const status = String(device.occupancy?.status || "").toLowerCase();
                     return status === "ready_for_auth" || status === "missed" || status === "active";
                   }) && (
